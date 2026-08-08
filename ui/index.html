@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aegis Security</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ════════════════════════════════════════ title bar (editorial lockup) -->
+<div id="titlebar" class="pywebview-drag-region">
+  <div class="brand">
+    <img src="aegis.svg" class="logo" alt="Aegis" draggable="false">
+    <span class="bn">AEGIS</span><span class="bt">SECURITY</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="status" id="trayStatus"><span class="dot ok"></span><span class="sl">PROTECTED</span></div>
+  <div class="winbtn" onclick="api.minimize()"><svg viewBox="0 0 12 12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.3"/></svg></div>
+  <div class="winbtn" onclick="api.toggle_maximize()"><svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></div>
+  <div class="winbtn close" onclick="api.close()"><svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.3"/></svg></div>
+</div>
+
+<div id="shell">
+  <!-- ══════════════════════════════════════ nav -->
+  <nav id="nav">
+    <div class="navgroup">Protection</div>
+    <div class="navitem on" data-p="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" stroke-linejoin="round"/></svg>
+      Status</div>
+    <div class="navitem" data-p="scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+      Scans</div>
+    <div class="navitem" data-p="shields">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/></svg>
+      Core Shields</div>
+    <div class="navitem" data-p="chest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2M12 12v3" stroke-linecap="round"/></svg>
+      Virus Chest<span class="badge hidden" id="chestBadge">0</span></div>
+
+    <div class="navgroup">Privacy &amp; Network</div>
+    <div class="navitem" data-p="wifi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg>
+      Wi-Fi Inspector</div>
+    <div class="navitem" data-p="breach">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>
+      Breach Monitor</div>
+    <div class="navitem" data-p="web">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
+      Web Shield</div>
+
+    <div class="navgroup">Performance</div>
+    <div class="navitem" data-p="clean">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Junk Cleanup</div>
+    <div class="navitem" data-p="startup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke-linejoin="round"/></svg>
+      Startup Manager</div>
+    <div class="navitem" data-p="health">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 13h4l2.5-7 4 14L16 13h5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      System Health</div>
+
+    <div class="navgroup">Manage</div>
+    <div class="navitem" data-p="log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3h11l4 4v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"/><path d="M8 12h8M8 16h5" stroke-linecap="round"/></svg>
+      Activity Log</div>
+    <div class="navitem" data-p="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" stroke-linejoin="round"/></svg>
+      Settings</div>
+
+    <div id="navfoot">
+      <div class="row"><span>Engine</span><b>Aegis Core 2.1</b></div>
+      <div class="row"><span>Definitions</span><b id="navDefs">—</b></div>
+      <div class="row"><span>Rules</span><b id="navRules">—</b></div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════ pages -->
+  <main id="main">
+
+    <!-- ─────────── STATUS -->
+    <section class="page on" id="p-home">
+      <div class="hero ok" id="hero">
+        <div class="shield">
+          <div class="pulse"></div>
+          <svg viewBox="0 0 100 100" fill="none" id="heroShield">
+            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" fill="currentColor" opacity=".13"/>
+            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+            <path id="heroMark" d="m35 49 11 11 20-22" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="txt">
+          <div class="kick">Real-time protection · active</div>
+          <div class="st" id="heroTitle">You're protected</div>
+          <div class="ds" id="heroDesc">All core shields are running and your definitions are current.</div>
+          <div class="acts">
+            <button class="btn pri" onclick="runScan('smart')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
+              Run Smart Scan</button>
+            <button class="btn" onclick="doUpdate()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Update definitions</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="issues"></div>
+
+      <h2>Quick actions</h2>
+      <div class="grid g4" style="margin-bottom:22px">
+        <div class="card hov" onclick="go('scan')">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg></div>
+          <h3>Deep Scan</h3><p>Examine every drive on this PC</p></div>
+        <div class="card hov" onclick="go('wifi');wifiScan()">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg></div>
+          <h3>Wi-Fi Inspector</h3><p>Audit your network for weaknesses</p></div>
+        <div class="card hov" onclick="go('clean');junkAnalyze()">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Clean junk</h3><p>Reclaim disk space safely</p></div>
+        <div class="card hov" onclick="go('health');healthScan()">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 13h4l2.5-7 4 14L16 13h5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>System Health</h3><p>Check security posture &amp; resources</p></div>
+      </div>
+
+      <h2>Recent activity</h2>
+      <div class="list" id="recent"></div>
+    </section>
+
+    <!-- ─────────── SCAN -->
+    <section class="page" id="p-scan">
+      <div class="eyebrow"><span class="num">02</span><span class="lab">Protection</span><span class="rule"></span></div>
+            <h1>Scans</h1>
+      <div class="sub">Choose how thoroughly Aegis should examine this PC.</div>
+
+      <div id="scanPick">
+        <div class="grid g2" style="margin-bottom:22px">
+          <div class="card hov" onclick="runScan('smart')">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke-linejoin="round"/></svg></div>
+            <h3>Smart Scan</h3><p>Checks the folders malware actually lands in — Downloads, Desktop, Documents, TEMP and startup locations. Takes a minute or two.</p></div>
+          <div class="card hov" onclick="runScan('full')">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></div>
+            <h3>Full Virus Scan</h3><p>Every file on every drive. Thorough but slow — best run overnight or while you're away.</p></div>
+          <div class="card hov" onclick="pickCustom()">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z" stroke-linejoin="round"/></svg></div>
+            <h3>Targeted Scan</h3><p>Pick a specific folder or drive. Scans every file inside it regardless of type.</p></div>
+          <div class="card hov" onclick="bootScanDialog()">
+            <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v9M7.5 6.5a7 7 0 1 0 9 0" stroke-linecap="round"/></svg></div>
+            <h3>Boot-Time Scan</h3><p>Runs before Windows finishes loading, catching rootkits that hide once the system is up.</p></div>
+        </div>
+
+        <h2>Scan history</h2>
+        <div class="list" id="scanHist"></div>
+      </div>
+
+      <div id="scanRun" class="hidden">
+        <div class="scanwrap">
+          <div class="ring">
+            <svg viewBox="0 0 190 190" width="190" height="190">
+              <circle class="c-bg" cx="95" cy="95" r="84" fill="none" stroke-width="11"/>
+              <circle class="c-fg" id="ringFg" cx="95" cy="95" r="84" fill="none" stroke-width="11"
+                      stroke-dasharray="527.8" stroke-dashoffset="527.8"/>
+            </svg>
+            <div class="mid"><div class="pc" id="scanPct">0%</div><div class="lb" id="scanState">starting</div></div>
+          </div>
+          <div class="scanfile" id="scanFile">&nbsp;</div>
+          <div class="scanstats">
+            <div><div class="v" id="scanDone">0</div><div class="k">Scanned</div></div>
+            <div><div class="v" id="scanTot">0</div><div class="k">Total</div></div>
+            <div><div class="v" id="scanThr" style="color:var(--bad)">0</div><div class="k">Threats</div></div>
+            <div><div class="v" id="scanEta">—</div><div class="k">Remaining</div></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn" id="btnPause" onclick="togglePause()">Pause</button>
+            <button class="btn dgr" onclick="api.stop_scan()">Stop scan</button>
+          </div>
+        </div>
+        <div id="liveThreats" style="margin-top:20px"></div>
+      </div>
+
+      <div id="scanDoneView" class="hidden">
+        <div class="hero" id="resHero" style="margin-bottom:20px">
+          <div class="shield"><svg viewBox="0 0 100 100" fill="none" id="resShield">
+            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" fill="currentColor" opacity=".13"/>
+            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+            <path id="resMark" d="m35 49 11 11 20-22" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="txt">
+            <div class="st" id="resTitle">No threats found</div>
+            <div class="ds" id="resDesc"></div>
+            <div class="acts" id="resActs"></div>
+          </div>
+        </div>
+        <div id="resList"></div>
+      </div>
+    </section>
+
+    <!-- ─────────── SHIELDS -->
+    <section class="page" id="p-shields">
+      <div class="eyebrow"><span class="num">03</span><span class="lab">Protection</span><span class="rule"></span></div>
+      <h1>Core Shields</h1>
+      <div class="sub">Each shield watches a different attack path. Turning one off leaves that path open.</div>
+      <div class="panel" id="shieldList"></div>
+      <div class="grid g3" style="margin-top:20px">
+        <div class="card stat"><div class="v" id="shFiles">0</div><div class="k">Files inspected in real time</div></div>
+        <div class="card stat"><div class="v" id="shProcs">0</div><div class="k">Processes analysed</div></div>
+        <div class="card stat"><div class="v" id="shAlerts">0</div><div class="k">Behaviour alerts raised</div></div>
+      </div>
+      <h2 style="margin-top:24px">Verify protection works</h2>
+      <div class="panel" style="padding:17px 18px">
+        <p class="mut" style="font-size:12.5px;line-height:1.6;margin-bottom:13px">
+          The EICAR test file is a harmless industry-standard string that every antivirus is
+          required to detect. Creating one on your Desktop is the safest way to confirm the
+          File Shield is genuinely intercepting files.</p>
+        <button class="btn" onclick="makeEicar()">Create EICAR test file on Desktop</button>
+      </div>
+    </section>
+
+    <!-- ─────────── CHEST -->
+    <section class="page" id="p-chest">
+      <div class="eyebrow"><span class="num">04</span><span class="lab">Protection</span><span class="rule"></span></div>
+            <h1>Virus Chest</h1>
+      <div class="sub">Quarantined files are encrypted and cannot run. Nothing here can harm your PC.</div>
+      <div style="display:flex;gap:9px;margin-bottom:16px">
+        <button class="btn" onclick="chestAdd()">Add a file</button>
+        <button class="btn dgr" onclick="chestEmpty()">Empty chest</button>
+      </div>
+      <div class="list" id="chestList"></div>
+    </section>
+
+    <!-- ─────────── WIFI -->
+    <section class="page" id="p-wifi">
+      <div class="eyebrow"><span class="num">05</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
+            <h1>Wi-Fi Inspector</h1>
+      <div class="sub">Scans your network and router for weaknesses attackers look for.</div>
+      <button class="btn pri" id="wifiBtn" onclick="wifiScan()">Scan network</button>
+      <div id="wifiOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── BREACH -->
+    <section class="page" id="p-breach">
+      <div class="eyebrow"><span class="num">06</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
+            <h1>Breach Monitor</h1>
+      <div class="sub">Checks whether your email address appears in known data breaches. Your address is never stored.</div>
+      <div class="panel" style="padding:18px;max-width:540px">
+        <div class="field"><label class="fl">Email address</label>
+          <input type="email" id="breachEmail" placeholder="you@example.com"></div>
+        <button class="btn pri" onclick="breachCheck()">Check for breaches</button>
+      </div>
+      <div id="breachOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── WEB -->
+    <section class="page" id="p-web">
+      <div class="eyebrow"><span class="num">07</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
+            <h1>Web Shield</h1>
+      <div class="sub">Blocks known malware-distribution and phishing hosts using the live URLhaus feed.</div>
+      <div class="panel" style="padding:18px;max-width:560px;margin-bottom:20px">
+        <label class="fl">Check a link before you open it</label>
+        <div class="inline">
+          <input type="text" id="urlIn" placeholder="https://example.com/download">
+          <button class="btn pri" onclick="checkUrl()">Check</button>
+        </div>
+        <div id="urlOut" style="margin-top:14px"></div>
+      </div>
+      <div class="grid g3">
+        <div class="card stat"><div class="v" id="webHosts">0</div><div class="k">Malicious hosts in feed</div></div>
+        <div class="card stat"><div class="v" id="webBlocked">0</div><div class="k">Blocked this session</div></div>
+        <div class="card stat"><div class="v" id="webSigs">0</div><div class="k">Malware hashes</div></div>
+      </div>
+      <h2 style="margin-top:24px">Browsing data</h2>
+      <div class="list" id="tracksList"></div>
+    </section>
+
+    <!-- ─────────── CLEAN -->
+    <section class="page" id="p-clean">
+      <div class="eyebrow"><span class="num">08</span><span class="lab">Performance</span><span class="rule"></span></div>
+            <h1>Junk Cleanup</h1>
+      <div class="sub">Removes caches and temporary files Windows leaves behind. Your documents are never touched.</div>
+      <button class="btn pri" id="junkBtn" onclick="junkAnalyze()">Analyse disk</button>
+      <div id="junkOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── STARTUP -->
+    <section class="page" id="p-startup">
+      <div class="eyebrow"><span class="num">09</span><span class="lab">Performance</span><span class="rule"></span></div>
+            <h1>Startup Manager</h1>
+      <div class="sub">Programs that launch with Windows. Malware persists here — so do slow boot times.</div>
+      <button class="btn pri" id="startBtn" onclick="startupLoad()">Analyse startup items</button>
+      <div id="startupOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── HEALTH -->
+    <section class="page" id="p-health">
+      <div class="eyebrow"><span class="num">10</span><span class="lab">Performance</span><span class="rule"></span></div>
+            <h1>System Health</h1>
+      <div class="sub">Security posture and resource checks for this machine.</div>
+      <button class="btn pri" id="healthBtn" onclick="healthScan()">Run health check</button>
+      <div id="healthOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── LOG -->
+    <section class="page" id="p-log">
+      <div class="eyebrow"><span class="num">11</span><span class="lab">Manage</span><span class="rule"></span></div>
+            <h1>Activity Log</h1>
+      <div class="sub">Everything Aegis has done and detected on this PC.</div>
+      <div class="tabs" id="logTabs">
+        <div class="tab on" data-k="">All</div>
+        <div class="tab" data-k="detection">Detections</div>
+        <div class="tab" data-k="blocked">Blocked</div>
+        <div class="tab" data-k="behaviour">Behaviour</div>
+        <div class="tab" data-k="scan">Scans</div>
+        <div class="tab" data-k="quarantine">Chest</div>
+        <div class="tab" data-k="update">Updates</div>
+      </div>
+      <div class="list" id="logList"></div>
+    </section>
+
+    <!-- ─────────── SETTINGS -->
+    <section class="page" id="p-settings">
+      <div class="eyebrow"><span class="num">12</span><span class="lab">Manage</span><span class="rule"></span></div>
+            <h1>Settings</h1>
+      <div class="sub">Tune how Aegis scans, reacts and updates.</div>
+
+      <h2>Scanning</h2>
+      <div class="panel" style="margin-bottom:20px" id="setScan"></div>
+
+      <h2>Definitions</h2>
+      <div class="panel" style="padding:18px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:230px">
+            <div style="font-size:13.5px;font-weight:600;margin-bottom:3px">Threat intelligence</div>
+            <div class="mut" style="font-size:12.5px" id="defInfo">—</div>
+          </div>
+          <button class="btn pri" id="updBtn" onclick="doUpdate()">Update now</button>
+        </div>
+        <div class="bar hidden" id="updBar"><i style="width:0"></i></div>
+      </div>
+
+      <h2>Scheduled scans</h2>
+      <div class="panel" style="margin-bottom:12px" id="schedList"></div>
+      <div class="panel" style="padding:16px 18px;margin-bottom:20px">
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div style="flex:1;min-width:130px"><label class="fl">Scan type</label>
+            <select id="schKind"><option value="smart">Smart Scan</option><option value="full">Full Scan</option></select></div>
+          <div style="width:120px"><label class="fl">Frequency</label>
+            <select id="schFreq"><option value="daily">Daily</option><option value="weekly">Weekly (Mon)</option></select></div>
+          <div style="width:88px"><label class="fl">Hour</label><input type="number" id="schH" min="0" max="23" value="2"></div>
+          <div style="width:88px"><label class="fl">Minute</label><input type="number" id="schM" min="0" max="59" value="0"></div>
+          <button class="btn" onclick="schedAdd()">Add schedule</button>
+        </div>
+      </div>
+
+      <h2>Exclusions</h2>
+      <div class="panel" style="margin-bottom:12px" id="exclList"></div>
+      <div style="display:flex;gap:9px;margin-bottom:20px">
+        <button class="btn" onclick="exclAddFolder()">Exclude a folder</button>
+        <button class="btn" onclick="exclAddFile()">Exclude a file</button>
+      </div>
+
+      <h2>Ransomware protected folders</h2>
+      <div class="panel" style="margin-bottom:12px" id="ransomList"></div>
+      <button class="btn" onclick="ransomAdd()" style="margin-bottom:20px">Protect another folder</button>
+
+      <h2>About</h2>
+      <div class="panel" style="padding:18px">
+        <dl class="kv" id="aboutKv"></dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer id="foot">
+  <img src="aegis.svg" class="flogo" alt="Aegis" draggable="false">
+  <div class="fmeta">
+    <div class="fname">Aegis Security</div>
+    <div class="fsub">Real-time protection for Windows</div>
+  </div>
+</footer>
+
+<div id="toasts"></div>
+<div id="modal"><div class="mbox">
+  <div class="mhead"><div class="t" id="mTitle"></div><div class="d" id="mDesc"></div></div>
+  <div class="mbody" id="mBody"></div>
+  <div class="mfoot" id="mFoot"></div>
+</div></div>
+
+<script>document.documentElement.className='js';</script>
+<script src="core.js"></script>
+<script src="dash.js"></script>
+<script src="shield.js"></script>
+<script src="tools.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>
