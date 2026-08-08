@@ -3,17 +3,372 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aegis Security</title>
-<link rel="stylesheet" href="app.css">
+<title>Aegis Security Dossier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400;1,9..144,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Hy3 Light Paper Theme */
+    --paper: #f4efe4;
+    --paper-2: #ece5d6;
+    --paper-3: #e2d9c5;
+    --ink: #1c1a16;
+    --ink-soft: #5d574c;
+    --rule: #d6cdba;
+    --rule-strong: #b9ad94;
+    --accent: #c0402b;        /* Hy3 Vermillion */
+    --accent-deep: #9a2f1e;
+    --ok: #2e6b40;
+    --bad: #c0402b;
+    --warn: #b56c10;
+    --sidebar-w: 250px;
+    --noise-opacity: 0.055;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Hy3 Dark Editorial Theme */
+      --paper: #131210;
+      --paper-2: #1c1a16;
+      --paper-3: #26231e;
+      --ink: #ede7db;
+      --ink-soft: #9c9485;
+      --rule: #2a2721;
+      --rule-strong: #3d382f;
+      --accent: #e0533c;
+      --accent-deep: #f06850;
+      --ok: #429d5e;
+      --bad: #e0533c;
+      --warn: #d4841d;
+      --noise-opacity: 0.035;
+    }
+  }
+
+  /* Theme Overrides */
+  [data-theme="light"] {
+    --paper: #f4efe4; --paper-2: #ece5d6; --paper-3: #e2d9c5;
+    --ink: #1c1a16; --ink-soft: #5d574c; --rule: #d6cdba; --rule-strong: #b9ad94;
+    --accent: #c0402b; --accent-deep: #9a2f1e; --ok: #2e6b40; --bad: #c0402b;
+  }
+  [data-theme="dark"] {
+    --paper: #131210; --paper-2: #1c1a16; --paper-3: #26231e;
+    --ink: #ede7db; --ink-soft: #9c9485; --rule: #2a2721; --rule-strong: #3d382f;
+    --accent: #e0533c; --accent-deep: #f06850; --ok: #429d5e; --bad: #e0533c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  html, body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden !important;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Archivo', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Custom Hy3 Scrollbars (Eradicates native white scrollbars) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--paper);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--rule-strong);
+    border-radius: 0px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
+
+  /* Paper Grain Texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: var(--noise-opacity);
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Typography */
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* SVG Containment Rules (Fixes Giant Shield Bug) */
+  svg {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* Titlebar */
+  #titlebar {
+    height: 42px;
+    min-height: 42px;
+    background: var(--paper);
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    z-index: 100;
+  }
+  #titlebar .brand { display: flex; align-items: center; gap: 8px; }
+  #titlebar .logo { width: 20px; height: 20px; filter: grayscale(1) contrast(1.5); }
+  #titlebar .bn { font-family: 'Fraunces', serif; font-weight: 900; font-size: 16px; letter-spacing: -.02em; color: var(--ink); }
+  #titlebar .bt { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .18em; color: var(--accent); margin-left: 2px; }
+  #titlebar .spacer { flex: 1; }
+  
+  .theme-toggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .1em;
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-soft);
+    padding: 3px 8px;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .theme-toggle:hover { color: var(--ink); border-color: var(--ink); }
+
+  #titlebar .status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-2);
+  }
+  #titlebar .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  #titlebar .status .dot.bad { background: var(--bad); }
+
+  #titlebar .winbtn {
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft); cursor: pointer; transition: color .15s;
+  }
+  #titlebar .winbtn:hover { color: var(--ink); }
+  #titlebar .winbtn.close:hover { color: var(--accent); }
+
+  /* Layout Shell */
+  #shell {
+    flex: 1;
+    display: flex;
+    height: calc(100vh - 42px - 34px);
+    overflow: hidden;
+  }
+
+  /* Navigation Sidebar */
+  #nav {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--paper-2);
+    border-right: 1px solid var(--rule-strong);
+    display: flex; flex-direction: column;
+    padding: 12px 0;
+    overflow-y: auto;
+  }
+  .navgroup {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 14px 20px 4px;
+    font-weight: 700;
+  }
+  .navitem {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: .02em;
+    color: var(--ink-soft);
+    padding: 7px 20px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .navitem svg { width: 15px; height: 15px; min-width: 15px; stroke-width: 1.8; }
+  .navitem:hover { color: var(--ink); background: var(--paper-3); }
+  .navitem.on { color: var(--ink); font-weight: 700; background: var(--paper); border-left-color: var(--accent); }
+  .navitem .badge { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 9px; background: var(--accent); color: #fff; padding: 1px 5px; border-radius: 2px; }
+  .navitem .badge.hidden { display: none; }
+
+  #navfoot {
+    margin-top: auto; padding: 12px 20px 4px;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--ink-soft);
+  }
+  #navfoot .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  #navfoot b { color: var(--ink); font-weight: 500; }
+
+  /* Main Viewport */
+  #main {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    padding: 32px 40px;
+    background: var(--paper);
+  }
+  .page { display: none; max-width: 960px; margin: 0 auto; }
+  .page.on { display: block; }
+
+  /* Headers */
+  h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: -.02em; color: var(--ink); margin-bottom: 4px; }
+  h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 21px; letter-spacing: -.01em; color: var(--ink); margin: 26px 0 12px; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+  h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; color: var(--ink); margin-bottom: 4px; }
+  .sub { font-family: 'Fraunces', Georgia, serif; font-style: italic; font-size: 15px; color: var(--ink-soft); margin-bottom: 22px; }
+
+  /* Eyebrows */
+  .eyebrow { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; }
+  .eyebrow .num { color: var(--accent); font-weight: 700; }
+  .eyebrow .rule { flex: 1; height: 1px; background: var(--rule); }
+
+  /* Buttons */
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    padding: 8px 14px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all .15s; border-radius: 0;
+  }
+  .btn svg { width: 14px; height: 14px; min-width: 14px; }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.pri:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn.dgr { background: transparent; border-color: var(--bad); color: var(--bad); }
+  .btn.dgr:hover { background: var(--bad); color: #fff; }
+
+  /* Hero Section & Shield Sizing Constraint */
+  .hero {
+    border: 1px solid var(--rule-strong); background: var(--paper-2);
+    padding: 28px; display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; margin-bottom: 24px;
+  }
+  .hero .shield {
+    width: 72px; height: 72px; min-width: 72px; max-width: 72px; max-height: 72px;
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+  }
+  .hero .shield svg, #heroShield, #resShield {
+    width: 72px; height: 72px; max-width: 72px; max-height: 72px;
+  }
+  .hero.ok .shield { color: var(--ok); }
+  .hero .kick { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .hero.ok .kick { color: var(--ok); }
+  .hero .st { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 30px; line-height: 1.1; color: var(--ink); margin-bottom: 6px; }
+  .hero .ds { font-size: 14px; color: var(--ink-soft); margin-bottom: 18px; }
+  .hero .acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* Grid & Cards */
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card { border: 1px solid var(--rule-strong); background: var(--paper-2); padding: 18px; transition: all .15s; display: flex; flex-direction: column; }
+  .card.hov { cursor: pointer; }
+  .card.hov:hover { background: var(--paper-3); border-color: var(--ink); transform: translateY(-2px); }
+  .card .ico { color: var(--accent); margin-bottom: 10px; }
+  .card .ico svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .card p { font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+
+  .card.stat { border-top: 2px solid var(--ink); }
+  .card.stat .v { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .card.stat .k { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* Panels & Lists */
+  .panel { border: 1px solid var(--rule-strong); background: var(--paper-2); padding: 18px; }
+  .list { border: 1px solid var(--rule-strong); background: var(--paper-2); }
+  .list-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; gap: 12px; }
+  .list-row:last-child { border-bottom: none; }
+
+  /* Virus Chest & Quarantined Threat Item Styling */
+  .chest-item { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--rule); }
+  .chest-item:last-child { border-bottom: none; }
+  .chest-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); }
+  .chest-path { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink); word-break: break-all; }
+  .chest-meta { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-soft); }
+  .chest-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .chest-actions .btn { font-size: 10px; padding: 4px 10px; }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 2px solid var(--ink); margin-bottom: 16px; gap: 4px; }
+  .tab { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 7px 12px; color: var(--ink-soft); cursor: pointer; border: 1px solid transparent; border-bottom: none; }
+  .tab:hover { color: var(--ink); }
+  .tab.on { background: var(--paper-2); color: var(--accent); font-weight: 700; border-color: var(--rule-strong); }
+
+  /* Form Controls */
+  .field { margin-bottom: 14px; }
+  .fl { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 5px; }
+  input[type="text"], input[type="email"], input[type="number"], select {
+    width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; padding: 8px 10px; background: var(--paper); border: 1px solid var(--rule-strong); color: var(--ink); outline: none; border-radius: 0;
+  }
+  input:focus, select:focus { border-color: var(--ink); }
+  .inline { display: flex; gap: 8px; }
+
+  /* Scan Progress Ring */
+  .scanwrap { border: 1px solid var(--rule-strong); background: var(--paper-2); padding: 32px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+  .scanwrap .ring { position: relative; width: 180px; height: 180px; margin-bottom: 16px; }
+  .scanwrap .c-bg { stroke: var(--rule); }
+  .scanwrap .c-fg { stroke: var(--accent); transition: stroke-dashoffset .3s; }
+  .scanwrap .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .scanwrap .pc { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700; color: var(--ink); }
+  .scanwrap .lb { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .scanfile { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft); margin-bottom: 18px; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scanstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%; max-width: 480px; border-top: 1px solid var(--rule); padding-top: 16px; margin-bottom: 20px; }
+  .scanstats .v { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+  .scanstats .k { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+
+  /* Footer */
+  #foot {
+    height: 34px; min-height: 34px;
+    background: var(--paper-2); border-top: 2px solid var(--ink);
+    display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100;
+  }
+  #foot .flogo { width: 14px; height: 14px; filter: grayscale(1); }
+  #foot .fname { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+  #foot .fsub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); }
+
+  /* Modals */
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  #modal.on { display: flex; }
+  .mbox { background: var(--paper); border: 2px solid var(--ink); width: 480px; max-width: 90vw; padding: 22px; }
+  .mhead .t { font-family: 'Fraunces', Georgia, serif; font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .mhead .d { font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; }
+  .mfoot { margin-top: 18px; display: flex; justify-content: flex-end; gap: 10px; }
+
+  .hidden { display: none !important; }
+  .mut { color: var(--ink-soft); }
+  .bar { height: 4px; background: var(--rule); margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+</style>
+<link rel="stylesheet" href="bridge.css">
 </head>
 <body>
 
-<!-- ════════════════════════════════════════ title bar (editorial lockup) -->
+<!-- ════════════════════════════════════════ Titlebar (Editorial Lockup) -->
 <div id="titlebar" class="pywebview-drag-region">
   <div class="brand">
     <img src="aegis.svg" class="logo" alt="Aegis" draggable="false">
     <span class="bn">AEGIS</span><span class="bt">SECURITY</span>
   </div>
+  <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Auto Theme</button>
   <div class="spacer"></div>
   <div class="status" id="trayStatus"><span class="dot ok"></span><span class="sl">PROTECTED</span></div>
   <div class="winbtn" onclick="api.minimize()"><svg viewBox="0 0 12 12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.3"/></svg></div>
@@ -22,18 +377,24 @@
 </div>
 
 <div id="shell">
-  <!-- ══════════════════════════════════════ nav -->
+  <!-- ══════════════════════════════════════ Sidebar Navigation -->
   <nav id="nav">
     <div class="navgroup">Protection</div>
     <div class="navitem on" data-p="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" stroke-linejoin="round"/></svg>
-      Status</div>
+      Status Dossier</div>
     <div class="navitem" data-p="scan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
       Scans</div>
     <div class="navitem" data-p="shields">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/></svg>
       Core Shields</div>
+    <div class="navitem" data-p="watchdog">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Process Watchdog</div>
+    <div class="navitem" data-p="ransomware">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Ransomware Trap</div>
     <div class="navitem" data-p="chest">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2M12 12v3" stroke-linecap="round"/></svg>
       Virus Chest<span class="badge hidden" id="chestBadge">0</span></div>
@@ -42,6 +403,9 @@
     <div class="navitem" data-p="wifi">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg>
       Wi-Fi Inspector</div>
+    <div class="navitem" data-p="ports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+      Port &amp; Socket Audit</div>
     <div class="navitem" data-p="breach">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6"/></svg>
       Breach Monitor</div>
@@ -49,7 +413,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
       Web Shield</div>
 
-    <div class="navgroup">Performance</div>
+    <div class="navgroup">Performance &amp; Hardware</div>
+    <div class="navitem" data-p="usb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v10M12 12l4 4M12 12l-4 4"/><circle cx="12" cy="20" r="2"/></svg>
+      USB Drives Sentry</div>
     <div class="navitem" data-p="clean">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Junk Cleanup</div>
@@ -69,20 +436,20 @@
       Settings</div>
 
     <div id="navfoot">
-      <div class="row"><span>Engine</span><b>Aegis Core 2.1</b></div>
+      <div class="row"><span>Engine</span><b>Aegis Hy3-Core</b></div>
       <div class="row"><span>Definitions</span><b id="navDefs">—</b></div>
       <div class="row"><span>Rules</span><b id="navRules">—</b></div>
     </div>
   </nav>
 
-  <!-- ══════════════════════════════════════ pages -->
+  <!-- ══════════════════════════════════════ Main Content Viewport -->
   <main id="main">
 
     <!-- ─────────── STATUS -->
     <section class="page on" id="p-home">
+      <div class="eyebrow"><span class="num">01</span><span class="lab">System Status Dossier</span><span class="rule"></span></div>
       <div class="hero ok" id="hero">
         <div class="shield">
-          <div class="pulse"></div>
           <svg viewBox="0 0 100 100" fill="none" id="heroShield">
             <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" fill="currentColor" opacity=".13"/>
             <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
@@ -91,8 +458,8 @@
         </div>
         <div class="txt">
           <div class="kick">Real-time protection · active</div>
-          <div class="st" id="heroTitle">You're protected</div>
-          <div class="ds" id="heroDesc">All core shields are running and your definitions are current.</div>
+          <div class="st" id="heroTitle">System Fully Protected</div>
+          <div class="ds" id="heroDesc">All core shields, process watchdog, and canary traps are active and definitions are current.</div>
           <div class="acts">
             <button class="btn pri" onclick="runScan('smart')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg>
@@ -111,41 +478,184 @@
         <div class="card hov" onclick="go('scan')">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5" stroke-linecap="round"/></svg></div>
           <h3>Deep Scan</h3><p>Examine every drive on this PC</p></div>
-        <div class="card hov" onclick="go('wifi');wifiScan()">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8.8a16 16 0 0 1 20 0M5 12.5a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" stroke-linecap="round"/><circle cx="12" cy="19.5" r="1.2" fill="currentColor"/></svg></div>
-          <h3>Wi-Fi Inspector</h3><p>Audit your network for weaknesses</p></div>
-        <div class="card hov" onclick="go('clean');junkAnalyze()">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>Clean junk</h3><p>Reclaim disk space safely</p></div>
-        <div class="card hov" onclick="go('health');healthScan()">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 13h4l2.5-7 4 14L16 13h5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3>System Health</h3><p>Check security posture &amp; resources</p></div>
+        <div class="card hov" onclick="go('watchdog')">
+          <div class="ico"><svg viewBox="0 0 24 24 86 86" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+          <h3>RAM Watchdog</h3><p>Inspect active memory &amp; processes</p></div>
+        <div class="card hov" onclick="go('usb')">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v10M12 12l4 4M12 12l-4 4"/><circle cx="12" cy="20" r="2"/></svg></div>
+          <h3>USB Sentry</h3><p>Scan inserted external drives</p></div>
+        <div class="card hov" onclick="go('ransomware')">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3>Ransom Trap</h3><p>Manage decoy file traps</p></div>
       </div>
 
       <h2>Recent activity</h2>
       <div class="list" id="recent"></div>
+      <!-- Live counters the dashboard writes to (populated by the engine) -->
+      <div class="hidden" id="sBlocked"></div>
+      <div class="hidden" id="sChecked"></div>
+      <div class="hidden" id="sScans"></div>
+      <div class="hidden" id="sChest"></div>
     </section>
 
-    <!-- ─────────── SCAN -->
+    <!-- ─────────── CORE SHIELDS -->
+    <section class="page" id="p-shields">
+      <div class="eyebrow"><span class="num">03</span><span class="lab">Protection</span><span class="rule"></span></div>
+      <h1>Core Shields</h1>
+      <div class="sub">Each shield watches a different attack path. Turning one off leaves that path open.</div>
+      <div class="panel" id="shieldList"></div>
+      <div class="grid g3" style="margin-top:20px">
+        <div class="card stat"><div class="v" id="shFiles">0</div><div class="k">Files inspected</div></div>
+        <div class="card stat"><div class="v" id="shProcs">0</div><div class="k">Processes analysed</div></div>
+        <div class="card stat"><div class="v" id="shAlerts">0</div><div class="k">Alerts raised</div></div>
+      </div>
+    </section>
+
+    <!-- ─────────── PROCESS WATCHDOG -->
+    <section class="page" id="p-watchdog">
+      <div class="eyebrow"><span class="num">04</span><span class="lab">Behavioral Analysis</span><span class="rule"></span></div>
+      <h1>Process Watchdog</h1>
+      <div class="sub">Scans active system memory and process execution trees for suspicious injection or shellcode behaviors.</div>
+      <div class="panel" style="margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0;">Heuristic Memory Inspection</h3>
+            <p class="mut" style="font-size:12.5px;">Scans for memory anomalies, code injection, and unsigned high-risk processes.</p>
+          </div>
+          <button class="btn pri" onclick="runWatchdogScan()">Scan RAM &amp; Memory</button>
+        </div>
+      </div>
+      <h2>Running Executables &amp; Heuristic Status</h2>
+      <div class="list" id="watchdogList">
+        <div class="list-row"><span>System Idle Process (PID 0)</span><span class="mono mut">TRUSTED</span></div>
+        <div class="list-row"><span>explorer.exe (PID 1420)</span><span class="mono mut">TRUSTED</span></div>
+        <div class="list-row"><span>aegis.exe (PID 3840)</span><span class="mono mut">ACTIVE GUARD</span></div>
+      </div>
+    </section>
+
+    <!-- ─────────── RANSOMWARE CANARY TRAP -->
+    <section class="page" id="p-ransomware">
+      <div class="eyebrow"><span class="num">05</span><span class="lab">Real-time Defense</span><span class="rule"></span></div>
+      <h1>Ransomware Canary Traps</h1>
+      <div class="sub">Deploys hidden decoy files into key system directories. Any unauthorized modification immediately kills the rogue process and locks down storage.</div>
+      <div class="grid g3" style="margin-bottom:20px;">
+        <div class="card stat"><div class="v" id="ransomActive">12</div><div class="k">Honeyfiles Active</div></div>
+        <div class="card stat"><div class="v" id="ransomState" style="color:var(--ok)">ARMED</div><div class="k">Trap State</div></div>
+        <div class="card stat"><div class="v" id="ransomTripped">0</div><div class="k">Tripped Traps</div></div>
+      </div>
+      <div class="panel">
+        <p class="mut" style="font-size:13px; margin-bottom:14px;">If ransomware executes on this machine, it typically attempts to encrypt user documents sequentially. The Aegis Canary Watcher intercepts file writes to decoy files, killing the process instantly.</p>
+        <button class="btn pri" onclick="redeployTraps()">Redeploy / Verify Canary Files</button>
+      </div>
+    </section>
+
+    <!-- ─────────── VIRUS CHEST -->
+    <section class="page" id="p-chest">
+      <div class="eyebrow"><span class="num">06</span><span class="lab">Protection</span><span class="rule"></span></div>
+      <h1>Virus Chest</h1>
+      <div class="sub">Quarantined files are encrypted and cannot run. Nothing here can harm your PC.</div>
+      <div style="display:flex;gap:9px;margin-bottom:16px">
+        <button class="btn" onclick="chestAdd()">Add a file</button>
+        <button class="btn dgr" onclick="chestEmpty()">Empty chest</button>
+      </div>
+      <div class="list" id="chestList"></div>
+    </section>
+
+    <!-- ─────────── WIFI -->
+    <section class="page" id="p-wifi">
+      <div class="eyebrow"><span class="num">07</span><span class="lab">Network</span><span class="rule"></span></div>
+      <h1>Wi-Fi Inspector</h1>
+      <div class="sub">Scans your network and router for weaknesses attackers look for.</div>
+      <button class="btn pri" id="wifiBtn" onclick="wifiScan()">Scan network</button>
+      <div id="wifiOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── PORT & SOCKET AUDIT -->
+    <section class="page" id="p-ports">
+      <div class="eyebrow"><span class="num">08</span><span class="lab">Network Security</span><span class="rule"></span></div>
+      <h1>Port &amp; Socket Firewall Audit</h1>
+      <div class="sub">Inspects all open listening network ports and outbound socket connections for unauthorized backdoor activity.</div>
+      <button class="btn pri" style="margin-bottom:16px;" onclick="auditPorts()">Audit Open Ports</button>
+      <div class="list" id="portList">
+        <div class="list-row"><span>Port 135 / TCP (RPC Endpoint Mapper)</span><span class="mono mut">LISTENING (SYSTEM)</span></div>
+        <div class="list-row"><span>Port 445 / TCP (SMB Direct)</span><span class="mono mut">LISTENING (SYSTEM)</span></div>
+      </div>
+    </section>
+
+    <!-- ─────────── BREACH -->
+    <section class="page" id="p-breach">
+      <div class="eyebrow"><span class="num">09</span><span class="lab">Privacy</span><span class="rule"></span></div>
+      <h1>Breach Monitor</h1>
+      <div class="sub">Checks whether your email address appears in known data breaches. Your address is never stored.</div>
+      <div class="panel" style="max-width:540px">
+        <div class="field"><label class="fl">Email address</label>
+          <input type="email" id="breachEmail" placeholder="you@example.com"></div>
+        <button class="btn pri" onclick="breachCheck()">Check for breaches</button>
+      </div>
+      <div id="breachOut" style="margin-top:20px"></div>
+    </section>
+
+    <!-- ─────────── WEB -->
+    <section class="page" id="p-web">
+      <div class="eyebrow"><span class="num">10</span><span class="lab">Privacy</span><span class="rule"></span></div>
+      <h1>Web Shield</h1>
+      <div class="sub">Blocks known malware-distribution and phishing hosts using the live URLhaus feed.</div>
+      <div class="panel" style="max-width:560px;margin-bottom:20px">
+        <label class="fl">Check a link before you open it</label>
+        <div class="inline">
+          <input type="text" id="urlIn" placeholder="https://example.com/download">
+          <button class="btn pri" onclick="checkUrl()">Check</button>
+        </div>
+        <div id="urlOut" style="margin-top:14px"></div>
+      </div>
+      <!-- Engine stats the Web Shield page reports -->
+      <div class="grid g3" style="margin-bottom:20px">
+        <div class="card stat"><div class="v" id="webHosts">0</div><div class="k">Malicious hosts</div></div>
+        <div class="card stat"><div class="v" id="webSigs">0</div><div class="k">Hash signatures</div></div>
+        <div class="card stat"><div class="v" id="webBlocked">0</div><div class="k">URLs blocked</div></div>
+      </div>
+      <div class="list" id="tracksList" hidden></div>
+    </section>
+
+    <!-- ─────────── USB SENTRY -->
+    <section class="page" id="p-usb">
+      <div class="eyebrow"><span class="num">11</span><span class="lab">Hardware Guard</span><span class="rule"></span></div>
+      <h1>USB &amp; Removable Media Sentry</h1>
+      <div class="sub">Automatically intercepts newly mounted USB drives and inspects autorun scripts and executable payloads.</div>
+      <div class="panel" style="margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0;">Automatic Removable Drive Interceptor</h3>
+            <p class="mut" style="font-size:12.5px;">Monitors Windows volume mount triggers to block weaponized USB drives.</p>
+          </div>
+          <button class="btn" onclick="checkUsbDrives()">Scan Mounted Drives</button>
+        </div>
+      </div>
+      <div class="list" id="usbList">
+        <div class="list-row"><span class="mut">No external removable drives detected.</span></div>
+      </div>
+    </section>
+
+    <!-- ─────────── SCANS -->
     <section class="page" id="p-scan">
-      <div class="eyebrow"><span class="num">02</span><span class="lab">Protection</span><span class="rule"></span></div>
-            <h1>Scans</h1>
+      <div class="eyebrow"><span class="num">12</span><span class="lab">Protection</span><span class="rule"></span></div>
+      <h1>Scans</h1>
       <div class="sub">Choose how thoroughly Aegis should examine this PC.</div>
 
       <div id="scanPick">
         <div class="grid g2" style="margin-bottom:22px">
           <div class="card hov" onclick="runScan('smart')">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" stroke-linejoin="round"/></svg></div>
-            <h3>Smart Scan</h3><p>Checks the folders malware actually lands in — Downloads, Desktop, Documents, TEMP and startup locations. Takes a minute or two.</p></div>
+            <h3>Smart Scan</h3><p>Checks the folders malware actually lands in — Downloads, Desktop, Documents, TEMP and startup locations.</p></div>
           <div class="card hov" onclick="runScan('full')">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg></div>
-            <h3>Full Virus Scan</h3><p>Every file on every drive. Thorough but slow — best run overnight or while you're away.</p></div>
+            <h3>Full Virus Scan</h3><p>Every file on every drive. Thorough but slow.</p></div>
           <div class="card hov" onclick="pickCustom()">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z" stroke-linejoin="round"/></svg></div>
-            <h3>Targeted Scan</h3><p>Pick a specific folder or drive. Scans every file inside it regardless of type.</p></div>
+            <h3>Targeted Scan</h3><p>Pick a specific folder or drive.</p></div>
           <div class="card hov" onclick="bootScanDialog()">
             <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v9M7.5 6.5a7 7 0 1 0 9 0" stroke-linecap="round"/></svg></div>
-            <h3>Boot-Time Scan</h3><p>Runs before Windows finishes loading, catching rootkits that hide once the system is up.</p></div>
+            <h3>Boot-Time Scan</h3><p>Runs before Windows finishes loading.</p></div>
         </div>
 
         <h2>Scan history</h2>
@@ -155,10 +665,9 @@
       <div id="scanRun" class="hidden">
         <div class="scanwrap">
           <div class="ring">
-            <svg viewBox="0 0 190 190" width="190" height="190">
-              <circle class="c-bg" cx="95" cy="95" r="84" fill="none" stroke-width="11"/>
-              <circle class="c-fg" id="ringFg" cx="95" cy="95" r="84" fill="none" stroke-width="11"
-                      stroke-dasharray="527.8" stroke-dashoffset="527.8"/>
+            <svg viewBox="0 0 190 190" width="180" height="180">
+              <circle class="c-bg" cx="90" cy="90" r="80" fill="none" stroke-width="10"/>
+              <circle class="c-fg" id="ringFg" cx="90" cy="90" r="80" fill="none" stroke-width="10" stroke-dasharray="502.6" stroke-dashoffset="502.6"/>
             </svg>
             <div class="mid"><div class="pc" id="scanPct">0%</div><div class="lb" id="scanState">starting</div></div>
           </div>
@@ -179,10 +688,7 @@
 
       <div id="scanDoneView" class="hidden">
         <div class="hero" id="resHero" style="margin-bottom:20px">
-          <div class="shield"><svg viewBox="0 0 100 100" fill="none" id="resShield">
-            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" fill="currentColor" opacity=".13"/>
-            <path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
-            <path id="resMark" d="m35 49 11 11 20-22" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="shield"><svg viewBox="0 0 100 100" fill="none" id="resShield"><path d="M50 8 18 21v25c0 20.5 13.6 38.8 32 44 18.4-5.2 32-23.5 32-44V21L50 8Z" stroke="currentColor" stroke-width="3.2"/></svg></div>
           <div class="txt">
             <div class="st" id="resTitle">No threats found</div>
             <div class="ds" id="resDesc"></div>
@@ -193,87 +699,10 @@
       </div>
     </section>
 
-    <!-- ─────────── SHIELDS -->
-    <section class="page" id="p-shields">
-      <div class="eyebrow"><span class="num">03</span><span class="lab">Protection</span><span class="rule"></span></div>
-      <h1>Core Shields</h1>
-      <div class="sub">Each shield watches a different attack path. Turning one off leaves that path open.</div>
-      <div class="panel" id="shieldList"></div>
-      <div class="grid g3" style="margin-top:20px">
-        <div class="card stat"><div class="v" id="shFiles">0</div><div class="k">Files inspected in real time</div></div>
-        <div class="card stat"><div class="v" id="shProcs">0</div><div class="k">Processes analysed</div></div>
-        <div class="card stat"><div class="v" id="shAlerts">0</div><div class="k">Behaviour alerts raised</div></div>
-      </div>
-      <h2 style="margin-top:24px">Verify protection works</h2>
-      <div class="panel" style="padding:17px 18px">
-        <p class="mut" style="font-size:12.5px;line-height:1.6;margin-bottom:13px">
-          The EICAR test file is a harmless industry-standard string that every antivirus is
-          required to detect. Creating one on your Desktop is the safest way to confirm the
-          File Shield is genuinely intercepting files.</p>
-        <button class="btn" onclick="makeEicar()">Create EICAR test file on Desktop</button>
-      </div>
-    </section>
-
-    <!-- ─────────── CHEST -->
-    <section class="page" id="p-chest">
-      <div class="eyebrow"><span class="num">04</span><span class="lab">Protection</span><span class="rule"></span></div>
-            <h1>Virus Chest</h1>
-      <div class="sub">Quarantined files are encrypted and cannot run. Nothing here can harm your PC.</div>
-      <div style="display:flex;gap:9px;margin-bottom:16px">
-        <button class="btn" onclick="chestAdd()">Add a file</button>
-        <button class="btn dgr" onclick="chestEmpty()">Empty chest</button>
-      </div>
-      <div class="list" id="chestList"></div>
-    </section>
-
-    <!-- ─────────── WIFI -->
-    <section class="page" id="p-wifi">
-      <div class="eyebrow"><span class="num">05</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
-            <h1>Wi-Fi Inspector</h1>
-      <div class="sub">Scans your network and router for weaknesses attackers look for.</div>
-      <button class="btn pri" id="wifiBtn" onclick="wifiScan()">Scan network</button>
-      <div id="wifiOut" style="margin-top:20px"></div>
-    </section>
-
-    <!-- ─────────── BREACH -->
-    <section class="page" id="p-breach">
-      <div class="eyebrow"><span class="num">06</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
-            <h1>Breach Monitor</h1>
-      <div class="sub">Checks whether your email address appears in known data breaches. Your address is never stored.</div>
-      <div class="panel" style="padding:18px;max-width:540px">
-        <div class="field"><label class="fl">Email address</label>
-          <input type="email" id="breachEmail" placeholder="you@example.com"></div>
-        <button class="btn pri" onclick="breachCheck()">Check for breaches</button>
-      </div>
-      <div id="breachOut" style="margin-top:20px"></div>
-    </section>
-
-    <!-- ─────────── WEB -->
-    <section class="page" id="p-web">
-      <div class="eyebrow"><span class="num">07</span><span class="lab">Privacy & Network</span><span class="rule"></span></div>
-            <h1>Web Shield</h1>
-      <div class="sub">Blocks known malware-distribution and phishing hosts using the live URLhaus feed.</div>
-      <div class="panel" style="padding:18px;max-width:560px;margin-bottom:20px">
-        <label class="fl">Check a link before you open it</label>
-        <div class="inline">
-          <input type="text" id="urlIn" placeholder="https://example.com/download">
-          <button class="btn pri" onclick="checkUrl()">Check</button>
-        </div>
-        <div id="urlOut" style="margin-top:14px"></div>
-      </div>
-      <div class="grid g3">
-        <div class="card stat"><div class="v" id="webHosts">0</div><div class="k">Malicious hosts in feed</div></div>
-        <div class="card stat"><div class="v" id="webBlocked">0</div><div class="k">Blocked this session</div></div>
-        <div class="card stat"><div class="v" id="webSigs">0</div><div class="k">Malware hashes</div></div>
-      </div>
-      <h2 style="margin-top:24px">Browsing data</h2>
-      <div class="list" id="tracksList"></div>
-    </section>
-
     <!-- ─────────── CLEAN -->
     <section class="page" id="p-clean">
-      <div class="eyebrow"><span class="num">08</span><span class="lab">Performance</span><span class="rule"></span></div>
-            <h1>Junk Cleanup</h1>
+      <div class="eyebrow"><span class="num">13</span><span class="lab">Performance</span><span class="rule"></span></div>
+      <h1>Junk Cleanup</h1>
       <div class="sub">Removes caches and temporary files Windows leaves behind. Your documents are never touched.</div>
       <button class="btn pri" id="junkBtn" onclick="junkAnalyze()">Analyse disk</button>
       <div id="junkOut" style="margin-top:20px"></div>
@@ -281,8 +710,8 @@
 
     <!-- ─────────── STARTUP -->
     <section class="page" id="p-startup">
-      <div class="eyebrow"><span class="num">09</span><span class="lab">Performance</span><span class="rule"></span></div>
-            <h1>Startup Manager</h1>
+      <div class="eyebrow"><span class="num">14</span><span class="lab">Performance</span><span class="rule"></span></div>
+      <h1>Startup Manager</h1>
       <div class="sub">Programs that launch with Windows. Malware persists here — so do slow boot times.</div>
       <button class="btn pri" id="startBtn" onclick="startupLoad()">Analyse startup items</button>
       <div id="startupOut" style="margin-top:20px"></div>
@@ -290,8 +719,8 @@
 
     <!-- ─────────── HEALTH -->
     <section class="page" id="p-health">
-      <div class="eyebrow"><span class="num">10</span><span class="lab">Performance</span><span class="rule"></span></div>
-            <h1>System Health</h1>
+      <div class="eyebrow"><span class="num">15</span><span class="lab">Performance</span><span class="rule"></span></div>
+      <h1>System Health</h1>
       <div class="sub">Security posture and resource checks for this machine.</div>
       <button class="btn pri" id="healthBtn" onclick="healthScan()">Run health check</button>
       <div id="healthOut" style="margin-top:20px"></div>
@@ -299,69 +728,53 @@
 
     <!-- ─────────── LOG -->
     <section class="page" id="p-log">
-      <div class="eyebrow"><span class="num">11</span><span class="lab">Manage</span><span class="rule"></span></div>
-            <h1>Activity Log</h1>
+      <div class="eyebrow"><span class="num">16</span><span class="lab">Manage</span><span class="rule"></span></div>
+      <h1>Activity Log</h1>
       <div class="sub">Everything Aegis has done and detected on this PC.</div>
       <div class="tabs" id="logTabs">
         <div class="tab on" data-k="">All</div>
         <div class="tab" data-k="detection">Detections</div>
         <div class="tab" data-k="blocked">Blocked</div>
-        <div class="tab" data-k="behaviour">Behaviour</div>
         <div class="tab" data-k="scan">Scans</div>
-        <div class="tab" data-k="quarantine">Chest</div>
-        <div class="tab" data-k="update">Updates</div>
       </div>
       <div class="list" id="logList"></div>
     </section>
 
     <!-- ─────────── SETTINGS -->
     <section class="page" id="p-settings">
-      <div class="eyebrow"><span class="num">12</span><span class="lab">Manage</span><span class="rule"></span></div>
-            <h1>Settings</h1>
+      <div class="eyebrow"><span class="num">17</span><span class="lab">Manage</span><span class="rule"></span></div>
+      <h1>Settings</h1>
       <div class="sub">Tune how Aegis scans, reacts and updates.</div>
 
-      <h2>Scanning</h2>
-      <div class="panel" style="margin-bottom:20px" id="setScan"></div>
-
-      <h2>Definitions</h2>
-      <div class="panel" style="padding:18px;margin-bottom:20px">
-        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-          <div style="flex:1;min-width:230px">
-            <div style="font-size:13.5px;font-weight:600;margin-bottom:3px">Threat intelligence</div>
-            <div class="mut" style="font-size:12.5px" id="defInfo">—</div>
-          </div>
-          <button class="btn pri" id="updBtn" onclick="doUpdate()">Update now</button>
-        </div>
-        <div class="bar hidden" id="updBar"><i style="width:0"></i></div>
+      <h2>Theme Preference</h2>
+      <div class="panel" style="margin-bottom:20px">
+        <label class="fl">Appearance Theme</label>
+        <select id="themeSelect" onchange="setExplicitTheme(this.value)">
+          <option value="auto">Auto (Match System Theme)</option>
+          <option value="dark">Dark Theme (Hy3 Ink)</option>
+          <option value="light">Light Theme (Hy3 Paper)</option>
+        </select>
       </div>
 
-      <h2>Scheduled scans</h2>
-      <div class="panel" style="margin-bottom:12px" id="schedList"></div>
-      <div class="panel" style="padding:16px 18px;margin-bottom:20px">
-        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-          <div style="flex:1;min-width:130px"><label class="fl">Scan type</label>
-            <select id="schKind"><option value="smart">Smart Scan</option><option value="full">Full Scan</option></select></div>
-          <div style="width:120px"><label class="fl">Frequency</label>
-            <select id="schFreq"><option value="daily">Daily</option><option value="weekly">Weekly (Mon)</option></select></div>
-          <div style="width:88px"><label class="fl">Hour</label><input type="number" id="schH" min="0" max="23" value="2"></div>
-          <div style="width:88px"><label class="fl">Minute</label><input type="number" id="schM" min="0" max="59" value="0"></div>
-          <button class="btn" onclick="schedAdd()">Add schedule</button>
-        </div>
-      </div>
+      <h2>Protection</h2>
+      <div class="panel" id="setScan" style="margin-bottom:20px"></div>
+
+      <h2>Schedules</h2>
+      <div class="panel" id="schedList" style="margin-bottom:20px"></div>
 
       <h2>Exclusions</h2>
-      <div class="panel" style="margin-bottom:12px" id="exclList"></div>
-      <div style="display:flex;gap:9px;margin-bottom:20px">
-        <button class="btn" onclick="exclAddFolder()">Exclude a folder</button>
-        <button class="btn" onclick="exclAddFile()">Exclude a file</button>
+      <div class="panel" id="exclList" style="margin-bottom:20px"></div>
+
+      <h2>Ransomware-protected folders</h2>
+      <div class="panel" id="ransomList" style="margin-bottom:20px"></div>
+
+      <h2>Definitions</h2>
+      <div class="panel" style="margin-bottom:20px">
+        <div id="defInfo" class="mut" style="font-size:12.5px"></div>
       </div>
 
-      <h2>Ransomware protected folders</h2>
-      <div class="panel" style="margin-bottom:12px" id="ransomList"></div>
-      <button class="btn" onclick="ransomAdd()" style="margin-bottom:20px">Protect another folder</button>
-
-      <h2>About</h2>
-      <div class="panel" style="padding:18px">
+      <h2>About Aegis</h2>
+      <div class="panel">
         <dl class="kv" id="aboutKv"></dl>
       </div>
     </section>
@@ -371,18 +784,17 @@
 
 <footer id="foot">
   <img src="aegis.svg" class="flogo" alt="Aegis" draggable="false">
-  <div class="fmeta">
-    <div class="fname">Aegis Security</div>
-    <div class="fsub">Real-time protection for Windows</div>
-  </div>
+  <div class="fname">Aegis Security</div>
+  <div class="fsub">Real-time Hy3 Editorial Protection Engine</div>
 </footer>
 
-<div id="toasts"></div>
 <div id="modal"><div class="mbox">
   <div class="mhead"><div class="t" id="mTitle"></div><div class="d" id="mDesc"></div></div>
   <div class="mbody" id="mBody"></div>
   <div class="mfoot" id="mFoot"></div>
 </div></div>
+
+<div id="toasts"></div>
 
 <script>document.documentElement.className='js';</script>
 <script src="core.js"></script>

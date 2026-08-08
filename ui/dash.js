@@ -44,10 +44,10 @@ async function refreshDash() {
     else if (a.startsWith('goto:')) go(a.slice(5));
   });
 
-  $('#sBlocked').textContent = num(d.totals.blocked);
-  $('#sChecked').textContent = num(d.totals.checked);
-  $('#sScans').textContent = num(d.totals.scans);
-  $('#sChest').textContent = num(d.chest_count);
+  if ($('#sBlocked')) $('#sBlocked').textContent = num(d.totals.blocked);
+  if ($('#sChecked')) $('#sChecked').textContent = num(d.totals.checked);
+  if ($('#sScans')) $('#sScans').textContent = num(d.totals.scans);
+  if ($('#sChest')) $('#sChest').textContent = num(d.chest_count);
 
   const cb = $('#chestBadge');
   cb.textContent = d.chest_count;

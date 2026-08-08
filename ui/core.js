@@ -163,3 +163,47 @@ window.addEventListener('pywebviewready', async () => {
   setInterval(() => { if (CUR === 'home') refreshDash(); }, 6000);
   setInterval(() => { if (CUR === 'shields') loadShields(); }, 3000);
 });
+
+/* ══ Theme persistence (Hy3 system-aware light/dark) ══════ */
+const THEME_KEY = 'aegis_theme';
+APPLIED_THEME = 'auto';
+
+function applyTheme(mode) {
+  APPLIED_THEME = mode;
+  try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+  const btn = $('#themeBtn'), sel = $('#themeSelect');
+  if (mode === 'auto') {
+    document.documentElement.removeAttribute('data-theme');
+    if (btn) btn.textContent = 'Auto Theme';
+    if (sel) sel.value = 'auto';
+  } else {
+    document.documentElement.setAttribute('data-theme', mode);
+    if (btn) btn.textContent = mode.toUpperCase() + ' MODE';
+    if (sel) sel.value = mode;
+  }
+}
+
+function initTheme() {
+  let saved;
+  try { saved = localStorage.getItem(THEME_KEY); } catch (e) {}
+  applyTheme(saved || 'auto');
+}
+
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  if (!cur) applyTheme('dark');
+  else if (cur === 'dark') applyTheme('light');
+  else applyTheme('auto');
+}
+
+function setExplicitTheme(v) { applyTheme(v); }
+
+/* Follow the OS only while in auto mode. */
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => { if (APPLIED_THEME === 'auto') applyTheme('auto'); });
+}
+
+/* Initialise before scripts that rely on the attribute run. */
+initTheme();
+

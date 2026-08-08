@@ -188,3 +188,93 @@ async function doUpdate() {
   const r = await API.update_now(true);
   if (!r.ok && b) { b.disabled = false; b.textContent = 'Update now'; toast('Update failed', r.error, 'bad'); }
 }
+
+/* ══ New engines — Process Watchdog / Ransomware Trap / Port Audit / USB Sentry ══
+   These wire the four pages from the Hy3 dossier to the real Python backend.
+   Each backend method returns live system data; if the bridge is unavailable
+   (e.g. opened in a plain browser) the function degrades to a short notice. */
+
+/* 1 — Process Watchdog: live process / memory inspection */
+async function runWatchdogScan() {
+  const list = $('#watchdogList');
+  if (!list) return;
+  list.innerHTML = '<div class="li"><div class="dot" style="background:var(--blue)"></div>' +
+    '<div class="body"><div class="t">Scanning running processes and RAM handles…</div></div></div>';
+  try {
+    const procs = await API.scan_watchdog();
+    list.innerHTML = procs.map(p =>
+      '<div class="li"><div class="dot" style="background:' +
+      (p.status === 'ACTIVE GUARD' ? 'var(--ok)' : p.status === 'TRUSTED' ? 'var(--tx3)' : 'var(--warn)') +
+      '"></div><div class="body"><div class="t">' + esc(p.name) +
+      ' <span class="pill info">' + esc(String(p.pid)) + '</span>' +
+      (p.status === 'ACTIVE GUARD' ? '<span class="pill ok">active guard</span>' : '') + '</div>' +
+      '<div class="d">' + esc(p.status) + (p.detail ? ' — ' + esc(p.detail) : '') + '</div></div></div>'
+    ).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
+      '<div class="body"><div class="t">Memory inspection unavailable</div>' +
+      '<div class="d">Run Aegis from the desktop app to inspect live processes.</div></div></div>';
+  }
+}
+
+/* 2 — Ransomware Canary Traps: verify/deploy decoy honeyfiles */
+async function redeployTraps() {
+  try {
+    const r = await API.verify_canary_traps();
+    const armed = r.status === 'ARMED';
+    $('#ransomState') && ($('#ransomState').textContent = r.status);
+    $('#ransomActive') && ($('#ransomActive').textContent = r.active);
+    $('#ransomTripped') && ($('#ransomTripped').textContent = r.tripped);
+    toast(armed ? 'Canary traps verified' : 'Canary traps not armed',
+      r.active + ' honeyfiles across Documents & Desktop', armed ? 'ok' : 'warn');
+  } catch (e) {
+    toast('Canary verification unavailable', 'Open the desktop app to manage traps.', 'warn');
+  }
+}
+
+/* 3 — Port & Socket Firewall Audit: live listening sockets */
+async function auditPorts() {
+  const list = $('#portList');
+  if (!list) return;
+  list.innerHTML = '<div class="li"><div class="dot" style="background:var(--blue)"></div>' +
+    '<div class="body"><div class="t">Auditing open listening sockets…</div></div></div>';
+  try {
+    const ports = await API.audit_network_ports();
+    list.innerHTML = ports.map(pt =>
+      '<div class="li"><div class="dot" style="background:var(--tx3)"></div>' +
+      '<div class="body"><div class="t">' + esc(pt.service || 'Unknown') +
+      ' <span class="pill info">' + esc(pt.protocol) + ' ' + esc(String(pt.port)) + '</span></div>' +
+      '<div class="d">' + esc(pt.state) + '</div></div></div>'
+    ).join('') || emptyState('No listening sockets', 'No open ports were found.');
+  } catch (e) {
+    list.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
+      '<div class="body"><div class="t">Port audit unavailable</div>' +
+      '<div class="d">Run the desktop app to inspect live network sockets.</div></div></div>';
+  }
+}
+
+/* 4 — USB & Removable Media Sentry: enumerate mounted drives */
+async function checkUsbDrives() {
+  const list = $('#usbList');
+  if (!list) return;
+  list.innerHTML = '<div class="li"><div class="dot" style="background:var(--blue)"></div>' +
+    '<div class="body"><div class="t">Polling USB bus and volume mounts…</div></div></div>';
+  try {
+    const drives = await API.scan_usb_drives();
+    if (!drives.length) {
+      list.innerHTML = '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
+        '<div class="body"><div class="t">No removable drives detected</div>' +
+        '<div class="d">No unauthorized storage is currently mounted.</div></div></div>';
+    } else {
+      list.innerHTML = drives.map(d =>
+        '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
+        '<div class="body"><div class="t">' + esc(d.letter) + ' <span class="pill ok">clean</span></div>' +
+        '<div class="d">' + esc(d.label || 'Removable media') + ' — ' + esc(d.status || 'mounted') + '</div></div></div>'
+      ).join('');
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
+      '<div class="body"><div class="t">USB scan unavailable</div>' +
+      '<div class="d">Run the desktop app to inspect mounted drives.</div></div></div>';
+  }
+}

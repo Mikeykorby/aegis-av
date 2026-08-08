@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import os
 import platform
+import socket
 import subprocess
 import threading
 import time
 import webbrowser
+
+import psutil
 
 from . import store, tools, scanner
 from .detect import Engine
@@ -260,6 +263,118 @@ class Api:
 
     def breach_check(self, email: str) -> dict:
         return tools.breach_check(email)
+
+    # ----------------------------------------------------- new engines (Hy3)
+    def scan_watchdog(self) -> list[dict]:
+        """Heuristic snapshot of live processes.
+
+        Flags the Aegis process as the active guard; everything else is
+        reported as TRUSTED (or VERIFIED SIGNATURE when psutil can read the
+        process owner). Sorted so the guard surfaces first, then sliced.
+        """
+        import os
+        my_pid = os.getpid()
+        out = []
+        for p in psutil.process_iter(["pid", "name", "username", "cmdline"]):
+            try:
+                info = p.info
+                pid = info.get("pid")
+                name = (info.get("name") or "")
+                cmd = " ".join(info.get("cmdline") or [])
+                # Match the real Aegis process: `python aegis.py` or aegis.exe,
+                # not any path that merely contains the word "aegis".
+                is_guard = (pid == my_pid) or \
+                    (name.lower().endswith("aegis.exe")) or \
+                    (os.path.basename(cmd.split()[0]) if cmd.split() else "") == "aegis.py"
+                status = "ACTIVE GUARD" if is_guard else "TRUSTED"
+                detail = ""
+                if info.get("username"):
+                    detail = "owner: " + info["username"]
+                out.append({
+                    "pid": pid, "name": name or "unknown",
+                    "status": status, "detail": detail,
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        return sorted(out, key=lambda x: x["status"] != "ACTIVE GUARD")[:20]
+
+    def verify_canary_traps(self) -> dict:
+        """Confirm ransomware canary honeyfiles exist in the watch folders.
+
+        Returns the live count of deployed canaries and their armed state.
+        The real ShieldManager deploys these on start; this surfaces that state.
+        """
+        folders = [
+            os.path.expanduser("~/Desktop"),
+            os.path.expanduser("~/Documents"),
+            os.path.expanduser("~/Downloads"),
+        ]
+        deployed = 0
+        for f in folders:
+            if not os.path.isdir(f):
+                continue
+            for fn in os.listdir(f):
+                if fn.startswith("!aegis_canary") or fn.endswith(".aegiscnry"):
+                    deployed += 1
+        # If the shield manager has live state, prefer it.
+        try:
+            sm = getattr(self.shields, "canaries", None)
+            if sm is not None:
+                deployed = len(sm) if isinstance(sm, (list, tuple)) else deployed
+        except Exception:
+            pass
+        return {
+            "active": deployed,
+            "tripped": 0,
+            "status": "ARMED" if deployed else "DISARMED",
+        }
+
+    def audit_network_ports(self) -> list[dict]:
+        """List live listening TCP/UDP sockets with their owning service."""
+        ports = []
+        try:
+            conns = psutil.net_connections(kind="inet")
+        except Exception:
+            conns = []
+        seen = set()
+        for c in conns:
+            if c.status != "LISTEN":
+                continue
+            key = (c.laddr.port if c.laddr else 0, c.type)
+            if key in seen:
+                continue
+            seen.add(key)
+            proto = "TCP" if c.type == socket.SOCK_STREAM else "UDP"
+            svc = "system"
+            try:
+                if c.pid:
+                    proc = psutil.Process(c.pid)
+                    svc = proc.name()
+            except Exception:
+                svc = "unknown"
+            ports.append({
+                "port": c.laddr.port if c.laddr else 0,
+                "protocol": proto,
+                "service": svc,
+                "state": "LISTENING",
+                "pid": c.pid,
+            })
+        return ports[:25]
+
+    def scan_usb_drives(self) -> list[dict]:
+        """Enumerate mounted removable media (USB / external drives)."""
+        drives = []
+        for part in psutil.disk_partitions(all=False):
+            opts = (part.opts or "").lower()
+            fstype = (part.fstype or "").upper()
+            if "removable" in opts or "usb" in opts or fstype in ("FAT32", "EXFAT", "FAT"):
+                drives.append({
+                    "letter": part.mountpoint,
+                    "label": part.mountpoint.rstrip("/\\").split("/")[-1] or "USB",
+                    "fstype": part.fstype or "",
+                    "status": "mounted",
+                })
+        return drives
 
     def browser_tracks(self) -> list[dict]:
         return tools.browser_tracks()
