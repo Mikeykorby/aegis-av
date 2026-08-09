@@ -59,21 +59,44 @@ HOT_PATHS = [
     os.path.join(os.path.expanduser("~"), "Downloads"),
     os.path.join(os.path.expanduser("~"), "Desktop"),
     os.path.join(os.path.expanduser("~"), "Documents"),
-    os.environ.get("TEMP", ""),
     os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp"),
-    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
-    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "StartUp"),
-    # common malware drop / execution locations
-    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
-    os.path.join(os.environ.get("LOCALAPPDATA", "")),
+    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows",
+                "Start Menu", "Programs", "Startup"),
+    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows",
+                 "Start Menu", "Programs", "StartUp"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows",
+                 "INetCache"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome",
+                 "User Data", "Default", "Downloads"),
     os.path.join(os.environ.get("APPDATA", "")),
-    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows", "Templates"),
-    os.path.expanduser("~"),
-    "C:\\Windows\\Temp",
-    "C:\\Windows\\System32\\spool\\PRINTERS",
-    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "INetCache"),
-    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Downloads"),
+    os.path.join(os.environ.get("LOCALAPPDATA", "")),
+    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows",
+                 "Templates"),
 ]
+
+# Watchdog observers can't open some system-protected directories (e.g. the
+# system TEMP under C:\Windows) and raise "Access is denied", which would make
+# the whole File Shield fail to start. Drop any path inside C:\Windows and
+# de-duplicate so we only watch locations the current user can actually read.
+def _safe_hot_paths() -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in HOT_PATHS:
+        p = (p or "").strip()
+        if not p:
+            continue
+        up = p.upper()
+        if up.startswith(r"C:\WINDOWS") or up.startswith(os.path.join("C:", "WINDOWS").upper()):
+            continue
+        if p in seen:
+            continue
+        seen.add(p)
+        if os.path.isdir(p):
+            out.append(p)
+    return out
+
+
+HOT_PATHS = _safe_hot_paths()
 
 # Command lines that are almost always malicious in combination.
 BEHAVIOUR_RULES: list[tuple[str, str, str]] = [
