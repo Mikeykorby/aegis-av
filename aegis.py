@@ -402,6 +402,20 @@ def main() -> int:
         return 0
     print("[DBG] after boot lock, before Api()", flush=True)
 
+    # ── Unique WebView2 profile per launch ──────────────────────────────────
+    # A lingering renderer from a previous (killed) instance can keep the
+    # shared profile folder open, so the next launch's WebView2 controller
+    # fails with 0x800700AA "resource in use" and the window paints BLACK.
+    # Giving every launch its own profile folder removes that contention
+    # entirely, so re-opening Aegis is always clean.
+    import atexit
+    import shutil as _shutil
+    import tempfile as _tempfile
+    _wv2 = os.path.join(_tempfile.gettempdir(), "aegis_wv2_%d" % os.getpid())
+    os.makedirs(_wv2, exist_ok=True)
+    os.environ["WEBVIEW2_USER_DATA_FOLDER"] = _wv2
+    atexit.register(lambda: _shutil.rmtree(_wv2, ignore_errors=True))
+
     # Optional remote-debugging port for automated UI verification.
     if os.environ.get("AEGIS_CDP"):
         os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
