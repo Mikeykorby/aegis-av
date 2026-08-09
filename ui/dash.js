@@ -77,6 +77,7 @@ async function refreshDash() {
 
 /* ── start / control scans ──────────────────────────────── */
 async function runScan(kind, paths) {
+  window.LAST_SCAN_KIND = kind;
   go('scan');
   const r = await API.start_scan(kind, paths || null);
   if (!r.ok) { toast('Cannot start scan', r.error, 'warn'); return; }
@@ -166,7 +167,9 @@ function onScanFinished(s) {
 
   $('#resActs').innerHTML = (n
     ? '<button class="btn pri" onclick="resolveAll(\'quarantine\')">Quarantine all</button>'
-    : '') + '<button class="btn" onclick="backToScans()">Back to scans</button>';
+    : '') +
+    '<button class="btn" onclick="scanAgain()">Scan again</button>' +
+    '<button class="btn" onclick="backToScans()">Back to scans</button>';
 
   $('#resList').innerHTML = n
     ? '<h2>Detections <span class="cnt">' + n + '</span></h2><div class="list">' +
@@ -204,6 +207,15 @@ function backToScans() {
   $('#scanDoneView').classList.add('hidden');
   $('#scanPick').classList.remove('hidden');
   loadScanHistory();
+}
+
+/* Re-run the scan that produced the current results, straight from the
+   results screen. The backend allows a new scan once the previous one is
+   done, but the results view previously only offered "Back to scans", which
+   made it look like you couldn't scan again. */
+function scanAgain() {
+  const kind = (window.LAST_SCAN_KIND || 'smart');
+  runScan(kind);
 }
 
 async function loadScanHistory() {
