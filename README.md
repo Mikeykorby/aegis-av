@@ -1,7 +1,7 @@
 # Aegis Security
 
-A working Windows antivirus with a WebView2 front end, built to match what
-Avast Free/Premium actually ships: layered detection, real-time shields, a
+A working Windows antivirus with a WebView2 front end, built to have more than
+Avast Premium actually ships: layered detection, real-time shields, a
 quarantine chest, and the network/performance tools that sit alongside the
 scanner.
 
