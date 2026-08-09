@@ -378,9 +378,18 @@ class ShieldManager:
     # ---------------------------------------------------------- reporting
     def status(self) -> dict:
         up = time.time() - self.stats["started"] if self.running else 0
+        # A shield's state is the *configured intent* AND the manager being
+        # live. We deliberately do NOT gate `file` on the private `self._observer`
+        # handle — that only tells us whether the kernel watcher spun up, not
+        # whether the user wants file protection. Gating on it made the UI report
+        # File Shield "off" on machines where the observer impl is unavailable
+        # even though protection was intended on. The real failure mode (observer
+        # could not start) is still recorded via the "File Shield failed to start"
+        # log entry, so it is not silently swallowed.
+        file_on = bool(store.get("shield.file", True)) and self.running
         return {
             "running": self.running,
-            "file": bool(self._observer) and self.running,
+            "file": file_on,
             "web": bool(store.get("shield.web", True)),
             "behavior": bool(store.get("shield.behavior", True)) and self.running,
             "ransomware": bool(store.get("shield.ransomware", True)) and self.running,

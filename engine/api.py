@@ -66,6 +66,23 @@ class Api:
                            "detail": "Your PC is not being actively monitored.",
                            "action": "shields_on", "cta": "Turn on"})
             blockers += 1
+
+        # A single individual shield being disabled still leaves a real attack
+        # path open — surface it as a critical issue so the UI drops out of
+        # "protected" instead of staying green.
+        if sh["running"]:
+            off = [name for name in ("file", "web", "behavior", "ransomware")
+                   if not sh.get(name)]
+            if off:
+                labels = {"file": "File Shield", "web": "Web Shield",
+                          "behavior": "Behaviour Shield", "ransomware": "Ransomware Shield"}
+                names = ", ".join(labels.get(n, n) for n in off)
+                issues.append({"level": "critical",
+                               "title": "A protection shield is disabled",
+                               "detail": f"{names} is off — that path is no longer monitored.",
+                               "action": "shields_on", "cta": "Turn on"})
+                blockers += 1
+
         if up["stale"]:
             issues.append({"level": "medium", "title": "Definitions are out of date",
                            "detail": f"Last updated {up['last_update_h']}.",
@@ -220,6 +237,22 @@ class Api:
 
     # -------------------------------------------------------------- shields
     def shields_start(self) -> dict:
+        return self.shields.start()
+
+    def shields_all_on(self) -> dict:
+        """Re-enable every protection shield and (re)start the manager.
+
+        Used by the dashboard's 'Turn on' action. Unlike shields_start() this
+        does NOT early-return when the manager is already running — if a single
+        sub-shield was switched off (file/web/behavior/ransomware), the manager
+        stays up but that flag stays False, so a bare shields_start() would do
+        nothing visible. We force every config flag back on and restart so the
+        at-risk state clears.
+        """
+        for n in ("file", "web", "behavior", "ransomware"):
+            store.set(f"shield.{n}", True)
+        if self.shields.running:
+            self.shields.stop()
         return self.shields.start()
 
     def shields_stop(self) -> dict:

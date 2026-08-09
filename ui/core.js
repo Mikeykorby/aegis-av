@@ -85,6 +85,7 @@ function go(p) {
   if (p === 'shields') loadShields();
   if (p === 'scan') loadScanHistory();
   if (p === 'web') loadWeb();
+  if (p === 'home') refreshDash();
 }
 $$('.navitem').forEach(n => n.onclick = () => go(n.dataset.p));
 

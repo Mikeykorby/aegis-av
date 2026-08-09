@@ -38,7 +38,7 @@ async function refreshDash() {
     : '';
   $$('#issues [data-act]').forEach(b => b.onclick = () => {
     const a = b.dataset.act;
-    if (a === 'shields_on') API.shields_start().then(() => { toast('Real-time protection enabled', '', 'ok'); refreshDash(); });
+    if (a === 'shields_on') API.shields_all_on().then(() => { toast('Real-time protection enabled', '', 'ok'); refreshDash(); });
     else if (a === 'update') doUpdate();
     else if (a === 'smart') runScan('smart');
     else if (a.startsWith('goto:')) go(a.slice(5));
@@ -48,6 +48,17 @@ async function refreshDash() {
   if ($('#sChecked')) $('#sChecked').textContent = num(d.totals.checked);
   if ($('#sScans')) $('#sScans').textContent = num(d.totals.scans);
   if ($('#sChest')) $('#sChest').textContent = num(d.chest_count);
+
+  // Titlebar status badge — reflects the real protection state so it
+  // flips out of "PROTECTED" the moment any shield is switched off.
+  const tray = $('#trayStatus'), dot = $('#trayDot'), label = $('#trayLabel');
+  if (tray && dot && label) {
+    const tv = { protected: ['ok', 'PROTECTED'], attention: ['warn', 'ATTENTION'],
+                 at_risk: ['bad', 'AT RISK'] }[d.state] || ['ok', 'PROTECTED'];
+    dot.className = 'dot ' + tv[0];
+    label.textContent = tv[1];
+    tray.classList.toggle('bad', d.state === 'at_risk');
+  }
 
   const cb = $('#chestBadge');
   cb.textContent = d.chest_count;

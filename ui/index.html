@@ -127,7 +127,7 @@
     z-index: 100;
   }
   #titlebar .brand { display: flex; align-items: center; gap: 8px; }
-  #titlebar .logo { width: 20px; height: 20px; filter: grayscale(1) contrast(1.5); }
+  #titlebar .logo { width: 20px; height: 20px; }
   #titlebar .bn { font-family: 'Fraunces', serif; font-weight: 900; font-size: 16px; letter-spacing: -.02em; color: var(--ink); }
   #titlebar .bt { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .18em; color: var(--accent); margin-left: 2px; }
   #titlebar .spacer { flex: 1; }
@@ -341,7 +341,7 @@
     background: var(--paper-2); border-top: 2px solid var(--ink);
     display: flex; align-items: center; padding: 0 16px; gap: 12px; z-index: 100;
   }
-  #foot .flogo { width: 14px; height: 14px; filter: grayscale(1); }
+  #foot .flogo { width: 14px; height: 14px; }
   #foot .fname { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
   #foot .fsub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); }
 
@@ -370,7 +370,7 @@
   </div>
   <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">Auto Theme</button>
   <div class="spacer"></div>
-  <div class="status" id="trayStatus"><span class="dot ok"></span><span class="sl">PROTECTED</span></div>
+  <div class="status" id="trayStatus"><span class="dot ok" id="trayDot"></span><span class="sl" id="trayLabel">PROTECTED</span></div>
   <div class="winbtn" onclick="api.minimize()"><svg viewBox="0 0 12 12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.3"/></svg></div>
   <div class="winbtn" onclick="api.toggle_maximize()"><svg viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></div>
   <div class="winbtn close" onclick="api.close()"><svg viewBox="0 0 12 12"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.3"/></svg></div>
