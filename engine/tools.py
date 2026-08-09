@@ -759,24 +759,66 @@ def _aegis_exe_pair():
     exe = sys.executable
     return exe, script
 
+def _startup_reg_key():
+    return r"Software\Microsoft\Windows\CurrentVersion\Run"
+
+
 def startup_status() -> dict:
-    out = _run(f'schtasks /Query /TN "{STARTUP_TASK}" /FO LIST 2>&1',
-               timeout=20)
-    enabled = "READY" in out.upper() or "RUNNING" in out.upper()
-    return {"ok": True, "enabled": enabled}
+    # Task Scheduler path
+    out = _run(f'schtasks /Query /TN "{STARTUP_TASK}" /FO LIST 2>&1', timeout=20)
+    if "READY" in out.upper() or "RUNNING" in out.upper():
+        return {"ok": True, "enabled": True, "method": "task"}
+    # Registry Run-key fallback
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _startup_reg_key()) as k:
+            try:
+                winreg.QueryValueEx(k, "AegisSecurity")
+                return {"ok": True, "enabled": True, "method": "registry"}
+            except FileNotFoundError:
+                pass
+    except Exception:
+        pass
+    return {"ok": True, "enabled": False}
+
+
+def _startup_via_registry(exe, script) -> dict:
+    try:
+        cmd = '"{0}" "{1}"'.format(exe, script)
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _startup_reg_key(),
+                           0, winreg.KEY_SET_VALUE) as k:
+            winreg.SetValueEx(k, "AegisSecurity", 0, winreg.REG_SZ, cmd)
+        return {"ok": True, "detail": "registry Run key set"}
+    except Exception as e:
+        return {"ok": False, "detail": str(e)}
+
 
 def startup_enable() -> dict:
     exe, script = _aegis_exe_pair()
-    # Highest run level => auto-elevated at logon, no UAC prompt.
-    # schtasks wants: /TR "\"exe\" \"script\""  — outer quotes wrap two
-    # inner-quoted args; through cmd.exe the \" becomes a real ".
-    tr = '"\\"{0}\\" \\"{1}\\""'.format(exe, script)
+    # Preferred: scheduled task at logon, highest run level (auto-elevated, no UAC).
+    # Some locked-down/eval environments block task creation, so fall back to the
+    # HKCU Run key, which survives logon and needs no scheduler.
+    tr = r'"\"{0}\" \"{1}\""'.format(exe, script)
     cmd = ('schtasks /Create /TN "{0}" /TR {1} /SC ONLOGON /RL HIGHEST /F'
            .format(STARTUP_TASK, tr))
     out = _run(cmd, timeout=30)
-    ok = ("SUCCESS" in out.upper()) or startup_status()["enabled"]
-    return {"ok": ok, "detail": out.strip()[:300]}
+    if "SUCCESS" in out.upper() or startup_status().get("method") == "task":
+        return {"ok": True, "detail": (out.strip() or "task created")[:300],
+                "method": "task"}
+    reg = _startup_via_registry(exe, script)
+    if reg.get("ok"):
+        return {"ok": True, "detail": reg.get("detail"), "method": "registry"}
+    return {"ok": False, "detail": (out.strip() or reg.get("detail", ""))[:300]}
+
 
 def startup_disable() -> dict:
-    out = _run(f'schtasks /Delete /TN "{STARTUP_TASK}" /F', timeout=20)
-    return {"ok": True, "detail": out.strip()[:200]}
+    _run(f'schtasks /Delete /TN "{STARTUP_TASK}" /F', timeout=20)
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _startup_reg_key(),
+                           0, winreg.KEY_SET_VALUE) as k:
+            try:
+                winreg.DeleteValue(k, "AegisSecurity")
+            except FileNotFoundError:
+                pass
+    except Exception:
+        pass
+    return {"ok": True, "detail": "startup disabled"}

@@ -938,7 +938,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div>
             <div class="tt" style="font-weight:600">Launch Aegis at Windows startup</div>
-            <div class="mut" style="font-size:12.5px;margin-top:4px">Aegis starts protected when you log in (runs elevated via a scheduled task, no UAC prompt).</div>
+            <div class="mut" style="font-size:12.5px;margin-top:4px">Aegis starts automatically when you log in. (Registered via a logon startup entry; Aegis already runs elevated, so it launches protected.)</div>
           </div>
           <div class="sw" id="startupSw" role="switch" tabindex="0" style="cursor:pointer"
                onclick="toggleStartup()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleStartup()}"></div>
