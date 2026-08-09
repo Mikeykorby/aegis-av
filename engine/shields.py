@@ -60,8 +60,19 @@ HOT_PATHS = [
     os.path.join(os.path.expanduser("~"), "Desktop"),
     os.path.join(os.path.expanduser("~"), "Documents"),
     os.environ.get("TEMP", ""),
-    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows",
-                 "Start Menu", "Programs", "Startup"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Temp"),
+    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
+    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "StartUp"),
+    # common malware drop / execution locations
+    os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Startup"),
+    os.path.join(os.environ.get("LOCALAPPDATA", "")),
+    os.path.join(os.environ.get("APPDATA", "")),
+    os.path.join(os.environ.get("PROGRAMDATA", ""), "Microsoft", "Windows", "Templates"),
+    os.path.expanduser("~"),
+    "C:\\Windows\\Temp",
+    "C:\\Windows\\System32\\spool\\PRINTERS",
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "INetCache"),
+    os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data", "Default", "Downloads"),
 ]
 
 # Command lines that are almost always malicious in combination.

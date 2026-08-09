@@ -22,10 +22,10 @@ from . import store
 from . import trust
 
 # ------------------------------------------------------------------ tables
-# Standard EICAR anti-malware test string (68 bytes). Single backslash after
-# the '4' — the previous value had '\\\\' (two backslashes) plus a typo
-# ('7CC)7}' instead of '7)}$' and '*' instead of '+'), so it never matched.
-EICAR = b"X5O!P%@AP[4\\PZX54(P^)7)}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H+"
+# Standard EICAR anti-malware test string (68 bytes). Exactly ONE backslash
+# after the '4'. Built from a single b"\\" so there is no escaping ambiguity
+# (a literal b"\\" in source is one byte; doubling it made EICAR unmatchable).
+EICAR = b"X5O!P%@AP[4" + b"\\" + b"PZX54(P^)7)}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
 
 SEV_ORDER = {"clean": 0, "low": 1, "pup": 2, "medium": 3, "high": 4, "critical": 5}
 
@@ -63,6 +63,16 @@ SUSPECT_IMPORTS = {
     "wnetaddconnection2w": ("Network share access", 2),
     "getprocaddress": ("Dynamic API resolution", 1),
     "loadlibrarya": ("Dynamic library load", 1),
+    "internetopena": ("Network connection (wininet)", 2),
+    "internetopenurla": ("Network fetch (wininet)", 3),
+    "internetreadfile": ("Network read (wininet)", 2),
+    "urlopen": ("Network fetch (winhttp)", 3),
+    "createprocessa": ("Process spawn", 2),
+    "createprocessw": ("Process spawn", 2),
+    "system": ("Shell command execution", 2),
+    "regsvr32": ("COM surrogate loading", 2),
+    "bitstransfer": ("BITS downloader", 3),
+    "coinfilterstartup": ("IE/Edge exec vector", 4),
 }
 
 PACKER_SECTIONS = {
@@ -76,7 +86,7 @@ PACKER_SECTIONS = {
 SCRIPT_PATTERNS: list[tuple[str, str, int]] = [
     (r"(?i)frombase64string\s*\(", "Base64 payload decode", 3),
     (r"(?i)\[system\.convert\]::frombase64", "Base64 payload decode", 3),
-    (r"(?i)invoke-expression|(?<![\w-])iex(?![\w-])", "Dynamic code execution (IEX)", 3),
+    (r"(?i)invoke-expression|(?<![\\w-])iex(?![\\w-])", "Dynamic code execution (IEX)", 3),
     (r"(?i)downloadstring|downloadfile|invoke-webrequest|start-bitstransfer",
      "Remote payload download", 4),
     (r"(?i)-enc(?:odedcommand)?\s+[A-Za-z0-9+/=]{40,}", "Encoded PowerShell command", 5),
@@ -95,13 +105,35 @@ SCRIPT_PATTERNS: list[tuple[str, str, int]] = [
     (r"(?i)new-object\s+net\.webclient", "WebClient downloader", 3),
     (r"(?i)bypass\s*-scope|executionpolicy\s+bypass", "Execution policy bypass", 3),
     (r"(?i)add-type\s+-memberdefinition.+kernel32", "P/Invoke into kernel32", 4),
-    (r"(?i)\$env:temp.+\.exe|%temp%\\\\?\w+\.exe", "Drops executable into TEMP", 2),
+    (r"(?i)\$env:temp.+\\.exe|%temp%\\?\\w+\.exe", "Drops executable into TEMP", 2),
     (r"(?i)netsh\s+advfirewall\s+set.+off", "Firewall disable", 4),
+    # expansion of real-world tradecraft
+    (r"(?i)regsvr32(\.exe)?\s+/s\s+/u\s+/i:", "Regsvr32 sct payload (Squiblydoo)", 5),
+    (r"(?i)msdt\.exe\s+-?-?", "MSDT (Follina) vector", 5),
+    (r"(?i)cmstp(\.exe)?\s+/s\s+/ni", "CMSTP UAC bypass", 4),
+    (r"(?i)\bverclsid\.exe\b", "Verclsid COM probing", 3),
+    (r"(?i)bitsadmin(\.exe)?\s+/transfer", "BITSAdmin downloader", 4),
+    (r"(?i)control\.exe\s+/name\s+microsoft\.defaultprograms", "Control-panel hijack", 2),
+    (r"(?i)\.downloadstring\(|\.downloadfile\(|\.uploadstring\(", "WebClient/IRM download", 3),
+    (r"(?i)os\.system\(|subprocess\.(call|popen|run)\(|exec\(|eval\(",
+     "Python exec/subprocess/eval", 3),
+    (r"(?i)cmd(\.exe)?\s*/[ck]\s", "Hidden cmd.exe payload (/c /k)", 3),
+    (r"(?i)powershell(\.exe)?\s*-[a-z]+\s", "PowerShell child launch", 2),
+    (r"(?i)start-process|start-job|invoke-command", "Process/spawn cmdlet", 2),
+    (r"(?i)register-clmscript(?:debug)?|set-authenticodesignature", "Live script signing/load", 3),
+    (r"(?i)new-object\s+system\.net\.sockets\.tcpclient", "Reverse-shell socket", 5),
+    (r"(?i)while\(\$true\)|for\(\;\,", "Loop construct (possible dropper)", 1),
+    (r"(?i)\[system\.diagnostics\.process\]::start", ".NET process start", 2),
 ]
 
 BAD_NAME_TOKENS = re.compile(
     r"(?i)(keygen|kms(pico|auto)|crack(ed)?|patcher|nulled|activator|hacktool|"
-    r"trainer|autoclicker|rat[-_ ]?client|stealer|logger|token[-_ ]?grabber|miner)")
+    r"trainer|autoclicker|rat[-_ ]?client|stealer|logger|token[-_ ]?grabber|miner|"
+    r"keylogger|cryptominer|backdoor|trojan|exploit|payload|dropper|worm|rootkit|"
+    r"botnet|spyware|adware|scareware|ransom|wanna|locky|crypt0|gandcrab|"
+    r"njrat|quasar|asyncrat|remcos|loki|azorult|redline|raccoon|vidar|formbook|"
+    r"agenttesla|emotet|trickbot|qakbot|cobalt|metasploit|cobaltstrike|empire|"
+    r"mimikatz|psexec|bloodhound|nanohttp|havij|sqlmap|dogecoin|bitcoin|monero)")
 
 DOUBLE_EXT = re.compile(
     r"(?i)\.(pdf|doc|docx|xls|xlsx|jpg|jpeg|png|txt|mp4|mp3|zip)\s*\.(exe|scr|com|bat|cmd|pif|vbs|js|lnk)$")
@@ -263,6 +295,65 @@ class Engine:
     # ---------------------------------------------------------- main entry
     def scan_file(self, path: str, deep: bool = False,
                   pup: bool = True, max_mb: int = 64) -> Verdict:
+        if os.path.splitext(path)[1].lower() in (".zip", ".apk", ".jar", ".docx",
+                                                  ".xlsx", ".pptx", ".ods", ".odt"):
+            return self._scan_container(path, deep=deep, pup=pup, max_mb=max_mb)
+        return self._scan_plain(path, deep=deep, pup=pup, max_mb=max_mb)
+
+    def _scan_container(self, path: str, deep: bool, pup: bool, max_mb: int) -> Verdict:
+        """Scan a container (zip-based + docx/xlsx) by exploding it in memory and
+        running the full per-file pipeline on each entry. Catches payloads nested
+        in archives, which the flat extension gate previously let through."""
+        v = Verdict(path=path)
+        try:
+            st = os.stat(path)
+        except OSError as e:
+            v.error = str(e); return v
+        v.size = st.st_size
+        dets: list[Detection] = []
+        scanned = 0
+        try:
+            import zipfile
+            with zipfile.ZipFile(path) as z:
+                for info in z.infolist():
+                    if info.is_dir() or info.file_size > max_mb * 1024 * 1024:
+                        continue
+                    try:
+                        data = z.read(info.filename)
+                    except Exception:
+                        continue
+                    scanned += 1
+                    # spoofed extension inside the archive (e.g. .pdf.exe)
+                    if DOUBLE_EXT.search(info.filename.split("/")[-1]):
+                        dets.append(Detection("Trojan:Zip/DoubleExtension", "high",
+                                             "heuristic", "Archive entry uses a document-like "
+                                             "name with an executable extension", 7))
+                    # EICAR / known hashes inside the archive
+                    if EICAR in data:
+                        dets.append(Detection("EICAR-Test-File", "high", "signature",
+                                             "Anti-malware test string found in archive", 10))
+                        continue
+                    h = hashlib.sha256(data).hexdigest()
+                    if h in self.sha_set:
+                        dets.append(Detection("Win32:Malware-gen [MalwareBazaar]", "critical",
+                                             "signature", "Hash (in archive) matches known malware", 20))
+                        continue
+                    # run the script/document/pe layers on the raw bytes
+                    dets += self._layer_script(info.filename, data[:1024 * 1024])
+                    dets += self._layer_document(info.filename, data[:1024 * 1024])
+        except Exception:
+            # not a zip-family container (e.g. real 7z) — fall back to raw scan
+            return self._scan_plain(path, deep=deep, pup=pup, max_mb=max_mb)
+        if scanned and not dets:
+            v.clean = True
+            return v
+        v.detections = dets
+        if dets:
+            v.severity = max(dets, key=lambda d: SEV_ORDER.get(d.severity, 0)).severity
+            v.clean = False
+        return v
+
+    def _scan_plain(self, path: str, deep: bool, pup: bool, max_mb: int) -> Verdict:
         v = Verdict(path=path)
         try:
             st = os.stat(path)
@@ -296,6 +387,19 @@ class Engine:
         dets: list[Detection] = []
         dets += self._layer_signature(path, v, head)
         dets += self._layer_filename(path)
+        # Whole-file entropy: a uniformly random (packed/encrypted) file with no
+        # other tell-tale is still suspicious — catches packers that evade the
+        # per-section check or strip the section table.
+        try:
+            full = head
+            with open(path, "rb") as fh:
+                full = fh.read(4 * 1024 * 1024)
+            fe = entropy(full)
+            if fe > 7.6:
+                dets.append(Detection("Packed:Win32/HighEntropy", "medium", "pe",
+                                     f"Whole-file entropy {fe:.2f} (packed/encrypted)", 3))
+        except OSError:
+            pass
         if head[:2] == b"MZ":
             v.signature = trust.verify(path)["status"]
             dets += self._layer_pe(path, head, v.size)
@@ -311,7 +415,6 @@ class Engine:
         v.score = sum(d.score for d in dets)
         if dets:
             v.severity = max(dets, key=lambda d: SEV_ORDER.get(d.severity, 0)).severity
-            v.clean = v.severity in ("clean",)
         # heuristic aggregation: several medium hints => escalate
         if v.severity in ("low", "medium") and v.score >= 9:
             v.severity = "high"
@@ -343,7 +446,43 @@ class Engine:
         if BAD_NAME_TOKENS.search(base):
             out.append(Detection("PUP:Win32/RiskTool", "pup", "heuristic",
                                  "Filename matches known risk-tool patterns", 3))
+        # Shortcut (.lnk) inspection — a .lnk aimed at powershell/cmd/cscript
+        # with a hidden window is the most common drive-by / email vector.
+        if base.lower().endswith(".lnk"):
+            try:
+                tgt = self._lnk_target(path)
+                if tgt:
+                    low = tgt.lower()
+                    if any(k in low for k in ("powershell", "cmd.exe", "cscript",
+                                             "wscript", "mshta", "rundll32", "regsvr32",
+                                             "wscript.shell")):
+                        out.append(Detection("Trojan:Win32/LnkExec", "high", "heuristic",
+                                             "Shortcut launches a script host: " + tgt[:90], 7))
+            except Exception:
+                pass
         return out
+
+    @staticmethod
+    def _lnk_target(path: str) -> str:
+        try:
+            import win32com.shell.shell as shell  # type: ignore
+            from win32com.shell import shellcon  # type: ignore
+            return shell.SHGetShortcutTarget(path) or ""
+        except Exception:
+            # Fallback: parse the shell link for the command line.
+            try:
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                s = data.decode("latin-1", "ignore")
+                for tok in ("powershell", "cmd.exe", "cscript", "wscript", "mshta",
+                            "rundll32", "regsvr32"):
+                    i = s.lower().find(tok)
+                    if i >= 0:
+                        return s[i:i + 120]
+            except Exception:
+                pass
+            return ""
+
 
     # ------------------------------------------------------------- layer 3
     def _layer_pe(self, path: str, head: bytes, size: int) -> list[Detection]:
