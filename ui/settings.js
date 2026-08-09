@@ -119,6 +119,35 @@ async function loadSettings() {
     '<dt>Runtime</dt><dd>Python ' + esc(sy.python) + '</dd>' +
     '<dt>Virus Chest</dt><dd>' + esc(s._paths.chest) + '</dd>' +
     '<dt>Intelligence</dt><dd>abuse.ch MalwareBazaar · URLhaus · YARA Forge</dd>';
+
+  await loadStartup();
+}
+
+async function loadStartup() {
+  const sw = $('#startupSw');
+  if (!sw) return;
+  try {
+    const r = await API.startup_status();
+    sw.classList.toggle('on', !!r.enabled);
+  } catch (e) {}
+}
+
+async function toggleStartup() {
+  const sw = $('#startupSw');
+  if (!sw) return;
+  const want = !sw.classList.contains('on');
+  try {
+    const r = want ? await API.startup_enable() : await API.startup_disable();
+    if (r.ok) {
+      sw.classList.toggle('on', want);
+      toast(want ? 'Aegis will launch at startup' : 'Startup launch disabled',
+            want ? 'Protected on next logon' : '', want ? 'ok' : 'warn');
+    } else {
+      toast('Could not change startup', r.detail || '', 'bad');
+    }
+  } catch (e) {
+    toast('Startup toggle failed', '', 'bad');
+  }
 }
 
 async function schedAdd() {

@@ -260,7 +260,7 @@ class ShieldManager:
                     if store.get("action.default", "quarantine") == "quarantine" \
                             and v.severity != "pup":
                         res = scanner.quarantine(v.path, v.name, v.sha256, "realtime")
-                    store.log("blocked", v.severity, f"{v.name} blocked in real time",
+                    store.log("blocked", v.severity, f"{v.name} detected & quarantined",
                               (v.detections[0].reason if v.detections else ""), v.path)
                     self.on_event("realtime_block", {
                         "path": v.path, "threat": v.name, "severity": v.severity,

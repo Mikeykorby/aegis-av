@@ -14,8 +14,68 @@ const SHIELD_DEFS = [
     'Inspects attachments saved from mail clients before they can be opened.']
 ];
 
+async function enableProtection() {
+  await API.set_protection(true);
+  toast('Real-time protection enabled', '', 'ok');
+  loadShields(); refreshDash();
+}
+
+async function disableProtection() {
+  const mins = Number($('#rtpMins').value) || 10;
+  const r = await API.disable_protection_for(mins);
+  if (r.ok) {
+    toast('Protection paused', 'Auto re-enable in ' + mins + ' min', 'warn');
+    loadShields(); refreshDash();
+  } else toast('Could not pause protection', '', 'bad');
+}
+
+/* Master toggle with a label that always reflects the CURRENT state:
+   when protection is ON the primary button reads "Disable protection"
+   (clicking it turns it off); when OFF it reads "Enable protection". */
+async function toggleProtection() {
+  const running = API._running;
+  if (running) {
+    await API.set_protection(false);
+    toast('Real-time protection disabled', '', 'warn');
+  } else {
+    await API.set_protection(true);
+    toast('Real-time protection enabled', '', 'ok');
+  }
+  loadShields(); refreshDash();
+}
+
+/* Keep the master-protection panel + titlebar in sync with the engine.
+   Called from refreshDash() on every dashboard poll. */
+function refreshRtp() {
+  const panel = $('#rtpPanel'), status = $('#rtpStatus');
+  if (!panel || !status) return;
+  const pausedUntil = API._pausedUntil || null;
+  const running = API._running;
+  const disableBtn = $('#rtpDisable'), mainBtn = $('#rtpMain');
+  if (pausedUntil && pausedUntil > Date.now()) {
+    const left = Math.max(0, Math.round((pausedUntil - Date.now()) / 1000));
+    const m = Math.floor(left / 60), s = left % 60;
+    status.textContent = 'Paused — re-enabling in ' + (m ? m + 'm ' : '') + s + 's';
+    status.style.color = 'var(--warn)';
+    if (disableBtn) disableBtn.disabled = true;
+    if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = 'Enable protection'; }
+  } else {
+    status.textContent = running ? 'Active — all shields running' : 'Disabled';
+    status.style.color = running ? 'var(--ok)' : 'var(--bad)';
+    if (disableBtn) disableBtn.disabled = !running;
+    if (mainBtn) {
+      mainBtn.disabled = false;
+      mainBtn.textContent = running ? 'Disable protection' : 'Enable protection';
+    }
+  }
+}
+
+/* drive the panel + titlebar countdown every second while on the page */
+let RTP_TICK = null;
 async function loadShields() {
   const s = await API.shield_status();
+  API._running = s.running;
+  API._pausedUntil = (await API.protection_paused_until()) || null;
   $('#shieldList').innerHTML = SHIELD_DEFS.map(([k, name, desc]) => {
     const on = !!s[k];
     return '<div class="trow ' + (on ? 'on' : 'off') + '">' +
@@ -43,6 +103,10 @@ async function loadShields() {
   $('#shFiles').textContent = num(s.files_checked);
   $('#shProcs').textContent = num(s.procs_checked);
   $('#shAlerts').textContent = num(s.behaviour_alerts + s.canary_alerts);
+
+  refreshRtp();
+  if (RTP_TICK) clearInterval(RTP_TICK);
+  RTP_TICK = setInterval(refreshRtp, 1000);
 }
 
 async function applyShield(k, on) {

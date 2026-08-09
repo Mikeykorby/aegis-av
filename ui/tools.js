@@ -278,3 +278,99 @@ async function checkUsbDrives() {
       '<div class="d">Run the desktop app to inspect mounted drives.</div></div></div>';
   }
 }
+
+/* 5 — Brute-Force Shield: scan the Security log for 4625 bursts */
+async function runBruteScan() {
+  const out = $('#bfOut');
+  if (out) out.innerHTML = '<div class="li"><div class="dot" style="background:var(--blue)"></div><div class="body"><div class="t">Reading Windows Security log…</div></div></div>';
+  try {
+    const r = await API.bruteforce_scan();
+    const s = await API.bruteforce_status();
+    $('#bfHits') && ($('#bfHits').textContent = num(r.hits));
+    $('#bfFlagged') && ($('#bfFlagged').textContent = num((r.flagged || []).length));
+    $('#bfWindow') && ($('#bfWindow').textContent = s.window_min + 'm');
+    if (out) {
+      if (!r.ok) {
+        out.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div><div class="body"><div class="t">Could not read the Security log</div><div class="d">' + esc(r.error || '') + '</div></div></div>';
+      } else if (!r.top.length) {
+        out.innerHTML = '<div class="li"><div class="dot" style="background:var(--ok)"></div><div class="body"><div class="t">No failed logons in the last ' + s.window_min + ' min</div><div class="d">No credential-guessing activity detected.</div></div></div>';
+      } else {
+        out.innerHTML = '<h2>Top source IPs</h2><div class="list">' + r.top.map(x =>
+          '<div class="li"><div class="dot" style="background:' +
+          ((r.flagged || []).some(f => f.ip === x.ip) ? 'var(--bad)' : 'var(--tx3)') + '"></div>' +
+          '<div class="body"><div class="t">' + esc(x.ip) +
+          ' <span class="pill ' + ((r.flagged || []).some(f => f.ip === x.ip) ? 'critical' : 'info') + '">' +
+          x.count + ' attempts</span></div></div></div>').join('') + '</div>';
+      }
+    }
+    refreshDash();
+  } catch (e) {
+    if (out) out.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div><div class="body"><div class="t">Brute-force scan unavailable</div></div></div>';
+  }
+}
+
+/* 6 — Firewall Control */
+async function loadFirewall() {
+  try {
+    const r = await API.firewall_status();
+    const on = r.profiles_on > 0;
+    const st = $('#fwStatus');
+    if (st) st.textContent = r.ok ? (on ? 'On — ' + r.profiles_on + ' profile(s) active' : 'Off — traffic is not being filtered') : 'Status unknown';
+    const onBtn = $('#fwOn'), offBtn = $('#fwOff');
+    if (onBtn) onBtn.disabled = on;
+    if (offBtn) offBtn.disabled = !on;
+  } catch (e) {}
+}
+async function setFirewall(on) {
+  await API.firewall_set(on);
+  toast('Firewall ' + (on ? 'enabled' : 'disabled'), '', on ? 'ok' : 'warn');
+  loadFirewall(); refreshDash();
+}
+
+/* 7 — Webcam & Mic Guard */
+async function loadPrivacy() {
+  try {
+    const r = await API.privacy_status();
+    const cam = $('#camState'), mic = $('#micState');
+    const fmt = v => (v === 'Allow' ? 'Allowed' : v === 'Deny' ? 'Denied' : (v || 'unknown'));
+    if (cam) { cam.textContent = fmt(r.webcam_consent); cam.style.color = r.webcam_consent === 'Deny' ? 'var(--ok)' : 'var(--warn)'; }
+    if (mic) { mic.textContent = fmt(r.mic_consent); mic.style.color = r.mic_consent === 'Deny' ? 'var(--ok)' : 'var(--warn)'; }
+  } catch (e) {}
+}
+
+/* 8 — Secure VPN (honest status surface) */
+async function loadVpn() {
+  try {
+    const r = await API.vpn_status();
+    const title = $('#vpnTitle'), desc = $('#vpnDesc'), kick = $('#vpnKick'), hero = $('#vpnHero');
+    if (r.available && r.profiles.length) {
+      const p = r.profiles[0];
+      const connected = /connected/i.test(p.ConnectionStatus || '');
+      kick.textContent = 'Privacy extra';
+      title.textContent = connected ? 'VPN connected' : 'VPN configured';
+      desc.textContent = p.Name + (connected ? ' — your traffic is tunneled.' : ' — not connected. Open Windows settings to connect.');
+      if (hero) hero.className = 'hero ' + (connected ? 'ok' : 'warn');
+    } else {
+      kick.textContent = 'Privacy extra';
+      title.textContent = 'No OS VPN configured';
+      desc.textContent = 'Aegis shows your system VPN state. Connect via your provider, then re-open this page.';
+      if (hero) hero.className = 'hero warn';
+    }
+  } catch (e) {}
+}
+
+/* 9 — File Shredder */
+async function shredPick() {
+  const files = await API.pick_files();
+  if (!files || !files.length) return;
+  const out = $('#shredOut');
+  for (const f of files) {
+    const r = await API.shred_file(f);
+    if (out) out.innerHTML = '<div class="li"><div class="dot" style="background:' +
+      (r.ok ? 'var(--ok)' : 'var(--bad)') + '"></div><div class="body"><div class="t">' +
+      esc(base(f)) + '</div><div class="d">' + (r.ok ? 'Securely wiped (' + bytes(r.bytes) + ')' : esc(r.error || 'failed')) +
+      '</div></div></div>' + (out.innerHTML || '');
+  }
+  toast('Shred complete', files.length + ' file(s) processed', 'ok');
+}
+

@@ -50,14 +50,16 @@ async function refreshDash() {
   if ($('#sChest')) $('#sChest').textContent = num(d.chest_count);
 
   // Titlebar status badge — reflects the real protection state so it
-  // flips out of "PROTECTED" the moment any shield is switched off.
+  // flips out of "PROTECTED" the moment any shield is switched off (or paused).
   const tray = $('#trayStatus'), dot = $('#trayDot'), label = $('#trayLabel');
   if (tray && dot && label) {
-    const tv = { protected: ['ok', 'PROTECTED'], attention: ['warn', 'ATTENTION'],
-                 at_risk: ['bad', 'AT RISK'] }[d.state] || ['ok', 'PROTECTED'];
+    let tv = { protected: ['ok', 'PROTECTED'], attention: ['warn', 'ATTENTION'],
+               at_risk: ['bad', 'AT RISK'] }[d.state] || ['ok', 'PROTECTED'];
+    // If protection is paused with auto re-enable, show PAUSED explicitly.
+    if (API._pausedUntil && API._pausedUntil > Date.now()) tv = ['warn', 'PAUSED'];
     dot.className = 'dot ' + tv[0];
     label.textContent = tv[1];
-    tray.classList.toggle('bad', d.state === 'at_risk');
+    tray.classList.toggle('bad', d.state === 'at_risk' || tv[0] === 'warn');
   }
 
   const cb = $('#chestBadge');

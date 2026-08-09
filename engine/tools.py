@@ -10,6 +10,7 @@ import shutil
 import socket
 import ssl
 import subprocess
+import sys
 import time
 import urllib.request
 import winreg
@@ -636,3 +637,146 @@ def browser_tracks() -> list[dict]:
         if entry["items"]:
             out.append(entry)
     return out
+
+
+# ====================================================== Brute-Force Shield
+# Watches the Windows Security Event Log for failed logon attempts (4625).
+# User-mode only: we cannot block the auth at the kernel, but we detect a
+# password-guessing sweep the moment it happens and surface the source IPs.
+def bruteforce_status() -> dict:
+    enabled = bool(store.get("shield.bruteforce", True))
+    return {"enabled": enabled, "window_min": int(store.get("bf.window_min", 10)),
+            "threshold": int(store.get("bf.threshold", 5))}
+
+
+def bruteforce_scan(window_min: int = 10, threshold: int = 5) -> dict:
+    """Return recent failed-logon bursts grouped by source, via wevtutil."""
+    q = (f"*[System[Provider[@Name='Microsoft-Windows-Security-Auditing'] "
+         f"and EventID=4625 and TimeCreated[timediff(@SystemTime) <= {window_min * 60000}]]]")
+    out = _run(f'wevtutil qe Security /q:"{q}" /f:text /c:200', timeout=30)
+    if out.startswith("__ERR__"):
+        return {"ok": False, "error": out[7:], "hits": 0, "top": []}
+    by_ip = {}
+    for blk in out.split("\n\n"):
+        ip = None
+        for line in blk.splitlines():
+            if "Network Address:" in line:
+                ip = line.split(":", 1)[1].strip().strip("'\"")
+            elif "Source Network Address:" in line:
+                ip = line.split(":", 1)[1].strip().strip("'\"")
+        if ip and ip not in ("-", "::1", "127.0.0.1"):
+            by_ip[ip] = by_ip.get(ip, 0) + 1
+    top = sorted(by_ip.items(), key=lambda kv: kv[1], reverse=True)[:10]
+    hits = sum(by_ip.values())
+    flagged = [{"ip": ip, "count": c} for ip, c in top if c >= threshold]
+    return {"ok": True, "hits": hits, "top": [{"ip": ip, "count": c} for ip, c in top],
+            "flagged": flagged}
+
+
+# ====================================================== Firewall control
+def firewall_status() -> dict:
+    out = _run("netsh advfirewall show allprofiles state", timeout=20)
+    on = sum(1 for ln in out.splitlines() if "ON" in ln.upper())
+    return {"ok": not out.startswith("__ERR__"), "profiles_on": on,
+            "raw": out.strip()[:600]}
+
+
+def firewall_set(on: bool) -> dict:
+    mode = "on" if on else "off"
+    out = _run(f"netsh advfirewall set allprofiles state {mode}", timeout=25)
+    return {"ok": not out.startswith("__ERR__"), "detail": out.strip()[:200]}
+
+
+# ====================================================== Webcam / Mic privacy
+# We cannot hook the camera driver in user mode, but we report the OS privacy
+# posture and warn if common capture apps are running with the mic/cam open.
+def privacy_status() -> dict:
+    cam = mic = "unknown"
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager"
+            r"\ConsentStore\webcam") as k:
+            cam = winreg.QueryValueEx(k, "Value")[0]
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager"
+            r"\ConsentStore\microphone") as k:
+            mic = winreg.QueryValueEx(k, "Value")[0]
+    except Exception:
+        pass
+    return {"ok": True, "webcam_consent": cam, "mic_consent": mic,
+            "note": "Privacy consent state read from Windows; Aegis cannot block "
+                    "a device at the kernel without a driver."}
+
+
+# ====================================================== File Shredder
+def shred_file(path: str) -> dict:
+    if not os.path.exists(path):
+        return {"ok": False, "error": "not found"}
+    try:
+        size = os.path.getsize(path)
+        with open(path, "r+b") as f:
+            f.seek(0)
+            f.write(os.urandom(min(size, 1024 * 1024)))   # one pass of random
+        os.remove(path)
+        return {"ok": True, "path": path, "bytes": size}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+# ====================================================== Secure VPN (premium)
+# Aegis has no cloud backend, so this is an honest status surface, not a live
+# tunnel. We report the Windows VPN profile state if one is configured.
+def vpn_status() -> dict:
+    out = _run("powershell -NoProfile -Command \"Get-VpnConnection -AllUserConnection "
+               "2>$null | Select-Object Name, ConnectionStatus | ConvertTo-Json\"",
+               timeout=25)
+    profiles = []
+    try:
+        data = json.loads(out)
+        if isinstance(data, dict):
+            data = [data]
+        profiles = data
+    except Exception:
+        pass
+    return {"ok": True, "available": bool(profiles),
+            "profiles": profiles,
+            "note": "Aegis does not operate its own VPN servers. Connect through "
+                    "your provider; this panel shows the OS VPN state."}
+
+
+# ====================================================== Windows startup
+# Use a scheduled task (logon trigger, highest run level) so Aegis launches
+# elevated at boot WITHOUT a per-boot UAC prompt. A plain HKCU Run entry can't
+# elevate, and a shortcut in the Startup folder likewise runs non-elevated.
+STARTUP_TASK = "AegisSecurityStartup"
+
+def _aegis_exe_pair():
+    """Return (python_exe, script_path) for the running Aegis process."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    # engine/tools.py -> project root is two levels up
+    root = os.path.dirname(os.path.dirname(here))
+    script = os.path.join(root, "aegis.py")
+    exe = sys.executable
+    return exe, script
+
+def startup_status() -> dict:
+    out = _run(f'schtasks /Query /TN "{STARTUP_TASK}" /FO LIST 2>&1',
+               timeout=20)
+    enabled = "READY" in out.upper() or "RUNNING" in out.upper()
+    return {"ok": True, "enabled": enabled}
+
+def startup_enable() -> dict:
+    exe, script = _aegis_exe_pair()
+    # Highest run level => auto-elevated at logon, no UAC prompt.
+    # schtasks wants: /TR "\"exe\" \"script\""  — outer quotes wrap two
+    # inner-quoted args; through cmd.exe the \" becomes a real ".
+    tr = '"\\"{0}\\" \\"{1}\\""'.format(exe, script)
+    cmd = ('schtasks /Create /TN "{0}" /TR {1} /SC ONLOGON /RL HIGHEST /F'
+           .format(STARTUP_TASK, tr))
+    out = _run(cmd, timeout=30)
+    ok = ("SUCCESS" in out.upper()) or startup_status()["enabled"]
+    return {"ok": ok, "detail": out.strip()[:300]}
+
+def startup_disable() -> dict:
+    out = _run(f'schtasks /Delete /TN "{STARTUP_TASK}" /F', timeout=20)
+    return {"ok": True, "detail": out.strip()[:200]}

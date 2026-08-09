@@ -28,6 +28,7 @@ import webview                                                   # noqa: E402
 
 from engine import store                                         # noqa: E402
 from engine.api import Api                                       # noqa: E402
+from engine.tray import TrayIcon, show_window, hide_window       # noqa: E402
 
 UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
 INDEX = os.path.join(UI_DIR, "index.html")
@@ -271,6 +272,26 @@ def _bootstrap(api: Api, window) -> None:
     # Set the real Aegis icon on the window + taskbar so it doesn't show the
     # python interpreter icon (and any crash dialog references "Aegis").
     _set_window_icon(window)
+
+    # ── System tray: the app stays alive (and keeps protecting) in the tray
+    #    when the UI is closed. The tray menu can Open the UI, enable/disable
+    #    real-time protection, or Quit. The window's X only hides to tray.
+    ico = os.path.join(UI_DIR, "aegis.ico")
+    tray = TrayIcon(
+        ico,
+        "Aegis Security",
+        on_open=lambda: (show_window(api.window), _force_foreground(_find_window("Aegis Security"))),
+        on_quit=lambda: _tray_quit(api),
+        on_toggle=lambda: _tray_toggle(api, tray),
+        protection_label=lambda: (
+            "Disable Protection" if api.shields.status().get("running") else "Enable Protection"),
+    )
+    tray.start()
+    api._tray = tray
+    # The UI's X / api.close() hides to tray instead of exiting.
+    api._on_close = lambda: hide_window(api.window)
+    api._on_minimize = lambda: hide_window(api.window)
+
     if os.environ.get("AEGIS_NO_BOOTSTRAP") == "1":
         return
 
@@ -324,6 +345,45 @@ def _set_window_icon(window) -> None:
             u.SendMessageW(hwnd, WM_SETICON, ICON_LARGE, hlarge)
         if hsmall:
             u.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, hsmall)
+    except Exception:
+        pass
+
+
+def _tray_quit(api: Api) -> None:
+    """Tray "Quit": stop protection, kill the tray icon, destroy the window.
+
+    Destroying the window lets webview.start return, after which main() runs
+    its shields.stop() cleanup and the process exits. This is the ONLY path
+    that terminates Aegis — the UI's X only hides to tray.
+    """
+    try:
+        api._tray.stop()
+    except Exception:
+        pass
+    try:
+        api.shields.stop()
+    except Exception:
+        pass
+    try:
+        api.window.destroy()
+    except Exception:
+        pass
+
+
+def _tray_toggle(api: Api, tray) -> None:
+    """Tray "Enable/Disable Protection": flip real-time shields and refresh the
+    menu label so the next open shows the correct action."""
+    try:
+        if api.shields.status().get("running"):
+            api.shields.stop()
+            store.log("app", "warn", "Real-time protection disabled (tray)", "")
+        else:
+            api.shields.start()
+            store.log("app", "info", "Real-time protection enabled (tray)", "")
+    except Exception as e:
+        store.log("error", "medium", "Tray protection toggle failed", str(e))
+    try:
+        tray.refresh()
     except Exception:
         pass
 

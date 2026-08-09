@@ -161,11 +161,13 @@
   #titlebar .status .dot.bad { background: var(--bad); }
 
   #titlebar .winbtn {
-    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    color: var(--ink-soft); cursor: pointer; transition: color .15s;
+    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+    color: var(--ink-soft); cursor: pointer; transition: color .15s, background .15s;
+    border-radius: 5px;
   }
-  #titlebar .winbtn:hover { color: var(--ink); }
-  #titlebar .winbtn.close:hover { color: var(--accent); }
+  #titlebar .winbtn svg { width: 13px; height: 13px; }
+  #titlebar .winbtn:hover { color: var(--ink); background: var(--paper-2); }
+  #titlebar .winbtn.close:hover { color: #fff; background: var(--accent); }
 
   /* Layout Shell */
   #shell {
@@ -174,6 +176,18 @@
     height: calc(100vh - 42px - 34px);
     overflow: hidden;
   }
+
+  /* Frameless window has no OS resize borders — draw our own thin grab edges */
+  .rz { position: fixed; z-index: 200; }
+  .rz.n, .rz.s { left: 8px; right: 8px; height: 5px; cursor: ns-resize; }
+  .rz.e, .rz.w { top: 8px; bottom: 8px; width: 5px; cursor: ew-resize; }
+  .rz.n { top: 0; } .rz.s { bottom: 0; }
+  .rz.w { left: 0; } .rz.e { right: 0; }
+  .rz.ne, .rz.nw, .rz.se, .rz.sw { width: 12px; height: 12px; z-index: 201; }
+  .rz.ne { top: 0; right: 0; cursor: nesw-resize; }
+  .rz.nw { top: 0; left: 0; cursor: nwse-resize; }
+  .rz.se { bottom: 0; right: 0; cursor: nwse-resize; }
+  .rz.sw { bottom: 0; left: 0; cursor: nesw-resize; }
 
   /* Navigation Sidebar */
   #nav {
@@ -230,6 +244,14 @@
   }
   .page { display: none; max-width: 960px; margin: 0 auto; }
   .page.on { display: block; }
+
+  /* Toggle switch (startup + settings) */
+  .sw { width: 46px; height: 26px; border-radius: 14px; background: var(--rule-strong);
+        position: relative; transition: background .18s; flex: 0 0 auto; }
+  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+        border-radius: 50%; background: #fff; transition: left .18s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .sw.on { background: var(--accent); }
+  .sw.on::after { left: 23px; }
 
   /* Headers */
   h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: -.02em; color: var(--ink); margin-bottom: 4px; }
@@ -412,11 +434,28 @@
     <div class="navitem" data-p="web">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg>
       Web Shield</div>
+    <div class="navitem" data-p="brute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2" stroke-linecap="round"/></svg>
+      Brute-Force Shield</div>
+    <div class="navitem" data-p="firewall">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Firewall Control</div>
+
+    <div class="navgroup">Privacy</div>
+    <div class="navitem" data-p="privacy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 8h3l2-3h6l2 3h3v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg>
+      Webcam &amp; Mic Guard</div>
+    <div class="navitem" data-p="vpn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 12a9 9 0 0 1-15 6.7L3 16" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>
+      Secure VPN</div>
 
     <div class="navgroup">Performance &amp; Hardware</div>
     <div class="navitem" data-p="usb">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v10M12 12l4 4M12 12l-4 4"/><circle cx="12" cy="20" r="2"/></svg>
       USB Drives Sentry</div>
+    <div class="navitem" data-p="shred">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 7h14M10 7V5h4v2M6 7l1 13h10l1-13M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      File Shredder</div>
     <div class="navitem" data-p="clean">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Junk Cleanup</div>
@@ -503,6 +542,42 @@
       <div class="eyebrow"><span class="num">03</span><span class="lab">Protection</span><span class="rule"></span></div>
       <h1>Core Shields</h1>
       <div class="sub">Each shield watches a different attack path. Turning one off leaves that path open.</div>
+
+      <div class="note" style="margin-bottom:22px;font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        <b>How Aegis protects you.</b> Aegis runs entirely in user mode — there is no kernel driver. That means it <b>detects and quarantines threats the moment a file is written</b>, and can <b>kill a malicious process</b> (e.g. ransomware touching a canary file) — but it cannot pre-empt the raw disk write the way a kernel-backed engine (like Windows Defender's minifilter) can. Web Shield is the one true real-time prevention layer, because it blocks the outbound connection before any file lands. For full kernel-level interception, run Aegis alongside Windows Defender.
+      </div>
+
+      <div class="panel" style="margin-bottom:22px">
+        <h3 style="margin:0 0 6px">How real-time protection works (modular Core Shields)</h3>
+        <p class="mut" style="font-size:13px;margin:0 0 12px">Like Avast's resident scanner, Aegis defends continuously in the background instead of waiting for a manual scan. Each shield is a separate watchtower over one attack path:</p>
+        <div class="grid g2">
+          <div class="trow on"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/></svg></div><div class="tb"><div class="tt">File Shield</div><div class="td">Inspects every file the instant it is opened, executed, or modified — the primary active scanner.</div></div></div>
+          <div class="trow on"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round"/></svg></div><div class="tb"><div class="tt">Behaviour Shield</div><div class="td">Watces running processes for attack patterns — catches zero-day behaviour, not just signatures.</div></div></div>
+          <div class="trow on"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M3 12h18" stroke-linecap="round"/></svg></div><div class="tb"><div class="tt">Web Shield</div><div class="td">Intercepts network traffic and blocks malicious hosts before a file ever lands (the true prevention layer).</div></div></div>
+          <div class="trow on"><div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6 8.5-6" stroke-linejoin="round"/></svg></div><div class="tb"><div class="tt">Mail Shield</div><div class="td">Inspects email attachments saved from mail clients before they can be opened.</div></div></div>
+        </div>
+        <p class="mut" style="font-size:12.5px;margin:12px 0 0">Behind the shields, Aegis correlates local heuristics (YARA-style rules, hash reputation, behaviour scoring) the way Avast's CyberCapture and global telemetry do — but computed locally on this PC, since Aegis has no cloud backend. Newer or unknown files are flagged by behaviour rather than a pre-existing definition.</p>
+      </div>
+
+      <div class="panel" id="rtpPanel" style="margin-bottom:22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Real-time protection</h3>
+            <p class="mut" id="rtpStatus" style="font-size:12.5px;margin:4px 0 0"></p>
+          </div>
+          <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+            <select id="rtpMins" class="field" style="width:auto;padding:8px 10px">
+              <option value="10">10 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="240">4 hours</option>
+            </select>
+            <button class="btn" id="rtpDisable" onclick="disableProtection()">Disable for</button>
+            <button class="btn pri" id="rtpMain" onclick="toggleProtection()">Disable protection</button>
+          </div>
+        </div>
+      </div>
+
       <div class="panel" id="shieldList"></div>
       <div class="grid g3" style="margin-top:20px">
         <div class="card stat"><div class="v" id="shFiles">0</div><div class="k">Files inspected</div></div>
@@ -544,7 +619,7 @@
         <div class="card stat"><div class="v" id="ransomTripped">0</div><div class="k">Tripped Traps</div></div>
       </div>
       <div class="panel">
-        <p class="mut" style="font-size:13px; margin-bottom:14px;">If ransomware executes on this machine, it typically attempts to encrypt user documents sequentially. The Aegis Canary Watcher intercepts file writes to decoy files, killing the process instantly.</p>
+        <p class="mut" style="font-size:13px; margin-bottom:14px;">If ransomware starts encrypting your documents, Aegis's canary watcher sees the write to a decoy file and <b>kills the offending process</b> before it spreads further. Aegis runs in user mode (no kernel driver), so it stops the attack by terminating the process rather than pre-empting the raw disk write — the canary gives it an early tripwire.</p>
         <button class="btn pri" onclick="redeployTraps()">Redeploy / Verify Canary Files</button>
       </div>
     </section>
@@ -617,11 +692,110 @@
       <div class="list" id="tracksList" hidden></div>
     </section>
 
+    <!-- ─────────── BRUTE-FORCE SHIELD -->
+    <section class="page" id="p-brute">
+      <div class="eyebrow"><span class="num">13</span><span class="lab">Network Defense</span><span class="rule"></span></div>
+      <h1>Brute-Force Shield</h1>
+      <div class="sub">Mirrors Avast's remote-access defense: watches the Windows Security log for rapid failed-logon attempts (Event ID 4625) and surfaces password-guessing sweeps the moment they start.</div>
+      <div class="note" style="margin-bottom:20px;font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        <b>Real-time, but user-mode.</b> Aegis detects the sweep and reports the attacking IPs immediately — it cannot block the credential attempt at the kernel the way a driver-backed firewall can. Pair with <b>Firewall Control</b> below (or Windows Defender) to actually drop the traffic.
+      </div>
+      <div class="grid g3" style="margin-bottom:20px">
+        <div class="card stat"><div class="v" id="bfHits">0</div><div class="k">Failed logons (10m)</div></div>
+        <div class="card stat"><div class="v" id="bfFlagged">0</div><div class="k">IPs over threshold</div></div>
+        <div class="card stat"><div class="v" id="bfWindow">10m</div><div class="k">Lookback window</div></div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Brute-Force monitoring</h3>
+            <p class="mut" style="font-size:12.5px;margin:4px 0 0">Alerts on credential-guessing attacks against this PC.</p>
+          </div>
+          <button class="btn pri" onclick="runBruteScan()">Scan login attempts</button>
+        </div>
+      </div>
+      <div style="margin-top:20px" id="bfOut"></div>
+    </section>
+
+    <!-- ─────────── FIREWALL CONTROL -->
+    <section class="page" id="p-firewall">
+      <div class="eyebrow"><span class="num">14</span><span class="lab">Network Defense</span><span class="rule"></span></div>
+      <h1>Firewall Control</h1>
+      <div class="sub">Avast Ultimate's advanced firewall, on-board: monitor and switch the Windows Defender Firewall to block remote-access hijacking and unauthorized intrusions.</div>
+      <div class="panel" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Windows Defender Firewall</h3>
+            <p class="mut" id="fwStatus" style="font-size:12.5px;margin:4px 0 0">Checking…</p>
+          </div>
+          <div style="display:flex;gap:9px">
+            <button class="btn pri" id="fwOn" onclick="setFirewall(true)">Turn on</button>
+            <button class="btn" id="fwOff" onclick="setFirewall(false)">Turn off</button>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--rule-strong);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        Aegis controls the OS firewall via <code>netsh</code>; it does not install its own packet filter. Keep it on for the intrusion-defense layer Avast advertises.
+      </div>
+    </section>
+
+    <!-- ─────────── WEBCAM & MIC GUARD -->
+    <section class="page" id="p-privacy">
+      <div class="eyebrow"><span class="num">15</span><span class="lab">Privacy</span><span class="rule"></span></div>
+      <h1>Webcam &amp; Mic Guard</h1>
+      <div class="sub">Like Avast's privacy shields: blocks untrusted apps from accessing your camera and microphone without permission. Aegis reports the Windows privacy-consent posture for both devices.</div>
+      <div class="grid g2" style="margin-bottom:20px">
+        <div class="card stat"><div class="v" id="camState">—</div><div class="k">Webcam consent</div></div>
+        <div class="card stat"><div class="v" id="micState">—</div><div class="k">Microphone consent</div></div>
+      </div>
+      <div class="panel">
+        <button class="btn pri" onclick="loadPrivacy()">Refresh privacy state</button>
+      </div>
+      <div class="note" style="margin-top:20px;font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        <b>Honest limit:</b> Aegis reads the OS consent state but cannot hard-block a device at the driver level without a kernel component. For enforced blocking, use Windows' per-app camera/mic settings — Aegis shows you the current posture at a glance.
+      </div>
+    </section>
+
+    <!-- ─────────── SECURE VPN -->
+    <section class="page" id="p-vpn">
+      <div class="eyebrow"><span class="num">16</span><span class="lab">Privacy</span><span class="rule"></span></div>
+      <h1>Secure VPN</h1>
+      <div class="sub">The premium privacy extra — an encrypted tunnel that hides your traffic from your ISP and local network. Aegis shows the status of your OS VPN connection.</div>
+      <div class="hero ok" id="vpnHero" style="margin-bottom:20px">
+        <div class="shield"><svg viewBox="0 0 100 100" fill="none"><path d="M50 12a30 30 0 0 1 30 30" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M20 42a30 30 0 0 0 30 30" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="42" r="6" fill="currentColor"/></svg></div>
+        <div class="txt">
+          <div class="kick" id="vpnKick">Privacy extra</div>
+          <div class="st" id="vpnTitle">VPN status</div>
+          <div class="ds" id="vpnDesc">Checking your system VPN…</div>
+        </div>
+      </div>
+      <div class="note" style="font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        <b>Transparency:</b> Aegis does not run its own VPN servers (no cloud backend), so this panel reflects your Windows VPN profile rather than providing a live tunnel. Connect through your provider (e.g. the VPN you already use) and Aegis will surface its state here. This is the same honest approach Avast takes — it just resells a third-party tunnel.
+      </div>
+    </section>
+
+    <!-- ─────────── FILE SHREDDER -->
+    <section class="page" id="p-shred">
+      <div class="eyebrow"><span class="num">17</span><span class="lab">Performance</span><span class="rule"></span></div>
+      <h1>File Shredder</h1>
+      <div class="sub">Avast Ultimate's file shredder — overwrites a file with random data before deleting it, so it can't be recovered from disk.</div>
+      <div class="panel" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Secure delete</h3>
+            <p class="mut" style="font-size:12.5px;margin:4px 0 0">Pick a file to irreversibly wipe. Use for sensitive documents before disposal.</p>
+          </div>
+          <button class="btn pri" onclick="shredPick()">Choose a file</button>
+        </div>
+      </div>
+      <div id="shredOut" style="margin-top:6px"></div>
+    </section>
+
     <!-- ─────────── USB SENTRY -->
     <section class="page" id="p-usb">
       <div class="eyebrow"><span class="num">11</span><span class="lab">Hardware Guard</span><span class="rule"></span></div>
       <h1>USB &amp; Removable Media Sentry</h1>
-      <div class="sub">Automatically intercepts newly mounted USB drives and inspects autorun scripts and executable payloads.</div>
+      <div class="sub">Scans USB drives the moment they are mounted and inspects autorun scripts and executable payloads. Runs in user mode, so it detects and quarantines threats on the drive rather than pre-empting the mount.</div>
       <div class="panel" style="margin-bottom:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div>
@@ -759,6 +933,17 @@
       <h2>Protection</h2>
       <div class="panel" id="setScan" style="margin-bottom:20px"></div>
 
+      <h2>Windows Startup</h2>
+      <div class="panel" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="tt" style="font-weight:600">Launch Aegis at Windows startup</div>
+            <div class="mut" style="font-size:12.5px;margin-top:4px">Aegis starts protected when you log in (runs elevated via a scheduled task, no UAC prompt).</div>
+          </div>
+          <div class="sw" id="startupSw" style="cursor:pointer" onclick="toggleStartup()"></div>
+        </div>
+      </div>
+
       <h2>Schedules</h2>
       <div class="panel" id="schedList" style="margin-bottom:20px"></div>
 
@@ -795,6 +980,16 @@
 </div></div>
 
 <div id="toasts"></div>
+
+<!-- Frameless resize grips (no OS borders on a frameless pywebview window) -->
+<div class="rz n" data-e="n"></div>
+<div class="rz s" data-e="s"></div>
+<div class="rz w" data-e="w"></div>
+<div class="rz e" data-e="e"></div>
+<div class="rz nw" data-e="nw"></div>
+<div class="rz ne" data-e="ne"></div>
+<div class="rz sw" data-e="sw"></div>
+<div class="rz se" data-e="se"></div>
 
 <script>document.documentElement.className='js';</script>
 <script src="core.js"></script>

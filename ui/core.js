@@ -86,6 +86,11 @@ function go(p) {
   if (p === 'scan') loadScanHistory();
   if (p === 'web') loadWeb();
   if (p === 'home') refreshDash();
+  if (p === 'firewall') loadFirewall();
+  if (p === 'privacy') loadPrivacy();
+  if (p === 'vpn') loadVpn();
+  if (p === 'brute') runBruteScan();
+  if (p === 'shred') {}   // file picker on demand
 }
 $$('.navitem').forEach(n => n.onclick = () => go(n.dataset.p));
 
@@ -115,7 +120,7 @@ async function pollEvents() {
   (evs || []).forEach(ev => {
     const d = ev.data || {};
     if (ev.kind === 'realtime_block') {
-      toast('Threat blocked: ' + (d.threat || 'malware'),
+      toast('Threat detected: ' + (d.threat || 'malware'),
         base(d.path) + (d.quarantined ? ' — moved to Virus Chest' : ' — detected'), 'bad');
       refreshDash();
     } else if (ev.kind === 'behaviour') {
@@ -154,12 +159,51 @@ document.addEventListener('dblclick', (e) => {
   if (e.target.closest('#titlebar') && API) API.toggle_maximize();
 });
 
+/* Frameless window has no OS resize borders — implement edge-drag resize.
+   We read the window rect from Python, then on each pointer move recompute
+   the rect for the grabbed edge and push it back via set_window_rect. */
+let _RZ = null;
+function initResize() {
+  const MIN_W = 1060, MIN_H = 700;
+  $$('.rz').forEach(z => {
+    z.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const edge = z.dataset.e;
+      let rect = null;
+      try { rect = API.get_window_rect(); } catch (err) { return; }
+      if (!rect || !rect.ok) return;
+      const sx = e.clientX, sy = e.clientY;
+      const ox = rect.x, oy = rect.y, ow = rect.w, oh = rect.h;
+      const move = (ev) => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        let x = ox, y = oy, w = ow, h = oh;
+        if (edge.includes('e')) w = Math.max(MIN_W, ow + dx);
+        if (edge.includes('s')) h = Math.max(MIN_H, oh + dy);
+        if (edge.includes('w')) { w = Math.max(MIN_W, ow - dx); x = ox + (ow - w); }
+        if (edge.includes('n')) { h = Math.max(MIN_H, oh - dy); y = oy + (oh - h); }
+        try { API.set_window_rect(x, y, w, h); } catch (err) {}
+        ev.preventDefault();
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        _RZ = null;
+        document.body.style.cursor = '';
+      };
+      _RZ = edge;
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
+}
+
 /* ── boot ───────────────────────────────────────────────── */
 window.addEventListener('pywebviewready', async () => {
   API = window.pywebview.api;
   window.api = API;                 // title-bar buttons use this
   await refreshDash();
   await loadSettings();
+  initResize();
   setInterval(pollEvents, 900);
   setInterval(() => { if (CUR === 'home') refreshDash(); }, 6000);
   setInterval(() => { if (CUR === 'shields') loadShields(); }, 3000);

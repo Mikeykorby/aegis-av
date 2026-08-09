@@ -27,11 +27,15 @@ class Api:
         self.updater = Updater(self.engine, on_event=self._push)
         self.job: ScanJob | None = None
         self.window = None
+        self._on_close = None   # set by aegis.py -> hide window to tray (keep shields)
+        self._on_minimize = None  # optional: route minimize to tray
         self._events: list[dict] = []
         self._ev_lock = threading.Lock()
         self._boot = time.time()
         self._sched_thread = threading.Thread(target=self._scheduler, daemon=True)
         self._sched_thread.start()
+        self.shield_min_w = 1060
+        self.shield_min_h = 700
 
     # -------------------------------------------------------------- events
     def _push(self, kind: str, data) -> None:
@@ -61,11 +65,19 @@ class Api:
         last_scan = hist[0] if hist else None
         issues, blockers = [], 0
 
+        paused_until = store.get("protection.paused_until")
         if not sh["running"]:
-            issues.append({"level": "critical", "title": "Real-time protection is off",
-                           "detail": "Your PC is not being actively monitored.",
-                           "action": "shields_on", "cta": "Turn on"})
-            blockers += 1
+            if paused_until and paused_until > time.time():
+                left = int((paused_until - time.time()) // 60) + 1
+                issues.append({"level": "medium",
+                               "title": "Real-time protection is paused",
+                               "detail": f"Not actively monitoring — auto re-enable in about {left} min.",
+                               "action": "shields_on", "cta": "Resume now"})
+            else:
+                issues.append({"level": "critical", "title": "Real-time protection is off",
+                               "detail": "Your PC is not being actively monitored.",
+                               "action": "shields_on", "cta": "Turn on"})
+                blockers += 1
 
         # A single individual shield being disabled still leaves a real attack
         # path open — surface it as a critical issue so the UI drops out of
@@ -268,6 +280,51 @@ class Api:
     def shield_status(self) -> dict:
         return self.shields.status()
 
+    # ── master real-time protection (with auto re-enable) ──────────
+    # When protection is paused "for a while" we stop the shield manager and
+    # schedule a Timer to bring it back so the user never has to remember.
+    _resume_timer = None
+
+    def protection_paused_until(self) -> float | None:
+        """Epoch seconds until which protection is paused, or None if active."""
+        return store.get("protection.paused_until")
+
+    def set_protection(self, on: bool) -> dict:
+        if self._resume_timer:
+            self._resume_timer.cancel()
+            self._resume_timer = None
+        store.set("protection.paused_until", None)
+        if on:
+            return self.shields_all_on()
+        return self.shields_stop()
+
+    def disable_protection_for(self, minutes: float) -> dict:
+        """Stop real-time protection and auto re-enable after `minutes`."""
+        if self.shields.running:
+            self.shields_stop()
+        until = time.time() + float(minutes) * 60
+        store.set("protection.paused_until", until)
+        if self._resume_timer:
+            self._resume_timer.cancel()
+        self._resume_timer = threading.Timer(float(minutes) * 60, self._auto_resume)
+        self._resume_timer.daemon = True
+        self._resume_timer.start()
+        store.log("shield", "medium", "Real-time protection paused",
+                  f"Will re-enable automatically in {int(minutes)} min")
+        return {"ok": True, "until": until}
+
+    def _auto_resume(self) -> None:
+        self._resume_timer = None
+        store.set("protection.paused_until", None)
+        if not self.shields.running:
+            self.shields_all_on()
+        store.log("shield", "ok", "Real-time protection resumed",
+                  "Automatic re-enable after scheduled pause")
+        try:
+            self._push("protection_resumed", {})
+        except Exception:
+            pass
+
     # ---------------------------------------------------------------- intel
     def update_now(self, rules: bool = True) -> dict:
         return self.updater.update(bool(rules))
@@ -281,6 +338,38 @@ class Api:
 
     def health_scan(self) -> dict:
         return tools.system_health()
+
+    # ── premium / extended shields (real, user-mode) ──────────
+    def bruteforce_status(self) -> dict:
+        return tools.bruteforce_status()
+
+    def bruteforce_scan(self) -> dict:
+        s = tools.bruteforce_status()
+        return tools.bruteforce_scan(s["window_min"], s["threshold"])
+
+    def firewall_status(self) -> dict:
+        return tools.firewall_status()
+
+    def firewall_set(self, on: bool) -> dict:
+        return tools.firewall_set(bool(on))
+
+    def privacy_status(self) -> dict:
+        return tools.privacy_status()
+
+    def shred_file(self, path: str) -> dict:
+        return tools.shred_file(path)
+
+    def vpn_status(self) -> dict:
+        return tools.vpn_status()
+
+    def startup_status(self) -> dict:
+        return tools.startup_status()
+
+    def startup_enable(self) -> dict:
+        return tools.startup_enable()
+
+    def startup_disable(self) -> dict:
+        return tools.startup_disable()
 
     def junk_analyze(self) -> dict:
         return tools.junk_analyze()
@@ -521,8 +610,26 @@ class Api:
         return {"ok": True}
 
     def minimize(self) -> dict:
-        if self.window:
+        # Closing/minimizing the window only hides it to the system tray; the
+        # app and its real-time protection keep running. Only the tray's
+        # "Quit" actually terminates Aegis.
+        if self._on_minimize:
+            self._on_minimize()
+        elif self.window:
             self.window.minimize()
+        return {"ok": True}
+
+    def close(self) -> dict:
+        """The UI's X: hide to the tray, do NOT exit.
+
+        Real-time protection must keep running while the window is closed, so
+        this only hides the window. The tray icon (started in aegis._bootstrap)
+        owns the quit path.
+        """
+        if self._on_close:
+            self._on_close()
+        elif self.window:
+            self.window.hide()
         return {"ok": True}
 
     def toggle_maximize(self) -> dict:
@@ -542,6 +649,38 @@ class Api:
             except Exception:
                 pass
         return {"ok": True, "maximized": getattr(self, "_maximized", False)}
+
+    # ── native-size window controls (frameless window has no OS borders) ──
+    def get_window_rect(self) -> dict:
+        try:
+            return {"ok": True, "x": int(self.window.x), "y": int(self.window.y),
+                    "w": int(self.window.width), "h": int(self.window.height),
+                    "maximized": getattr(self, "_maximized", False)}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "x": 0, "y": 0, "w": 0, "h": 0}
+
+    def set_window_rect(self, x: int, y: int, w: int, h: int) -> dict:
+        try:
+            w = max(int(self.shield_min_w), int(w)); h = max(int(self.shield_min_h), int(h))
+            self.window.resize(int(w), int(h))
+            self.window.move(int(x), int(y))
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def resize_window(self, w: int, h: int) -> dict:
+        try:
+            self.window.resize(int(w), int(h))
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def move_window(self, x: int, y: int) -> dict:
+        try:
+            self.window.move(int(x), int(y))
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     def close(self) -> dict:
         try:
