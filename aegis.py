@@ -440,11 +440,13 @@ def main() -> int:
     os.environ["WEBVIEW2_USER_DATA_FOLDER"] = _wv2
     atexit.register(lambda: _shutil.rmtree(_wv2, ignore_errors=True))
 
-    # Stability: force software rendering. On this machine the default GPU
-    # path makes the WebView2 renderer crash mid-launch ("refresh the page" /
-    # Aw-Snap), leaving a blank UI. Disabling GPU + software rasterizer keeps
-    # the renderer alive. Append so the optional CDP flag below still wins.
-    _wv_args = "--disable-gpu --disable-software-rasterizer --disable-dev-shm-usage --disable-features=msWebView2Update"
+    # Stability: force software (CPU) rendering. On this machine the default
+    # GPU path makes the WebView2 renderer crash mid-launch ("refresh the page"
+    # / Aw-Snap), leaving a blank UI. Disabling the GPU lets Chromium fall back
+    # to its software rasterizer — but we must NOT also pass
+    # --disable-software-rasterizer, or there is no rasterizer left and the
+    # renderer still crashes. Append so the optional CDP flag below still wins.
+    _wv_args = "--disable-gpu --disable-dev-shm-usage --disable-features=msWebView2Update"
     if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"):
         os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] += " " + _wv_args
     else:

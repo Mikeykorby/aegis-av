@@ -78,7 +78,24 @@ HOT_PATHS = [
 # system TEMP under C:\Windows) and raise "Access is denied", which would make
 # the whole File Shield fail to start. Drop any path inside C:\Windows and
 # de-duplicate so we only watch locations the current user can actually read.
+#
+# CRITICAL: never watch WebView2's own profile or Aegis' own app directory.
+# The File Shield opens every file written under a watched path to scan it;
+# if it watches %TEMP% (where the WebView2 data folder lives), it races the
+# renderer for every profile write, hits share-violations on WebView2's own
+# data, and crashes the renderer → the "refresh the page" / blank-UI screen.
 def _safe_hot_paths() -> list[str]:
+    import tempfile
+    forbidden = set()
+    wv2 = os.environ.get("WEBVIEW2_USER_DATA_FOLDER", "")
+    if wv2:
+        forbidden.add(os.path.normcase(os.path.normpath(wv2)))
+    # Broader guard: never watch anywhere inside the temp dir WebView2 uses,
+    # nor Aegis' own AppData folder (DB/logs/chest) — scanning those would
+    # fight the app itself.
+    _temp = os.path.normcase(os.path.normpath(tempfile.gettempdir()))
+    _app = os.path.normcase(os.path.normpath(
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Aegis")))
     seen: set[str] = set()
     out: list[str] = []
     for p in HOT_PATHS:
@@ -88,11 +105,20 @@ def _safe_hot_paths() -> list[str]:
         up = p.upper()
         if up.startswith(r"C:\WINDOWS") or up.startswith(os.path.join("C:", "WINDOWS").upper()):
             continue
-        if p in seen:
+        pn = os.path.normcase(os.path.normpath(p))
+        if pn == _temp or pn.startswith(_temp + os.sep):
             continue
-        seen.add(p)
-        if os.path.isdir(p):
-            out.append(p)
+        if pn == _app or pn.startswith(_app + os.sep):
+            continue
+        for f in forbidden:
+            if pn == f or pn.startswith(f + os.sep):
+                break
+        else:
+            if p in seen:
+                continue
+            seen.add(p)
+            if os.path.isdir(p):
+                out.append(p)
     return out
 
 
@@ -193,11 +219,37 @@ class ShieldManager:
                 h = _FileHandler(self)
                 added = 0
                 watched = []
+                # Never watch WebView2's own profile (or any ancestor of it):
+                # the File Shield opens every written file to scan it, and
+                # racing the renderer for its profile writes causes
+                # share-violations that crash the renderer ("refresh the page"
+                # / blank UI). The env var is set in main() *before* shields
+                # start, so this is the right place to read it.
+                _wv2 = os.path.normcase(os.path.normpath(
+                    os.environ.get("WEBVIEW2_USER_DATA_FOLDER", "")))
                 for p in HOT_PATHS:
-                    if p and os.path.isdir(p):
-                        self._observer.schedule(h, p, recursive=True)
-                        added += 1
-                        watched.append(p)
+                    if not p or not os.path.isdir(p):
+                        continue
+                    pn = os.path.normcase(os.path.normpath(p))
+                    skip = False
+                    if _wv2:
+                        # skip the profile itself AND any ancestor (e.g.
+                        # %LOCALAPPDATA% or %TEMP% that contains it), so the
+                        # recursive observer never descends into it.
+                        if pn == _wv2 or pn.startswith(_wv2 + os.sep):
+                            skip = True
+                        else:
+                            _anc = _wv2
+                            while _anc and _anc not in ("", os.sep):
+                                _anc = os.path.dirname(_anc)
+                                if pn == _anc or pn.startswith(_anc + os.sep):
+                                    skip = True
+                                    break
+                    if skip:
+                        continue
+                    self._observer.schedule(h, p, recursive=True)
+                    added += 1
+                    watched.append(p)
                 self._observer.start()
                 store.log("shield", "info", "File Shield active",
                           f"Monitoring {added} high-risk locations: {watched}")
