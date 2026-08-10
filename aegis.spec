@@ -2,7 +2,8 @@
 """PyInstaller spec for Aegis Security.
 
 Build:  pyinstaller aegis.spec
-Output: dist/aegis/aegis.exe  (one-folder) or use --onefile for a single exe.
+Output: dist/aegis.exe  (single portable executable)
+
 The WebView2 runtime is a system component, so it is NOT bundled — the
 frozen app uses the same Edge/WebView2 already on the machine.
 """
@@ -10,7 +11,6 @@ import os
 
 block_cipher = None
 
-# Bundle the UI (html/js/css + icon) as data so the frozen app finds them.
 ui_dir = os.path.join(SPECPATH, "ui")
 added_files = [
     (ui_dir, "ui"),
@@ -56,13 +56,17 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
     name="aegis",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     target_arch=None,
@@ -70,15 +74,4 @@ exe = EXE(
     entitlements_file=None,
     icon=os.path.join(ui_dir, "aegis.ico"),
     version=os.path.join(SPECPATH, "version_info.txt"),
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name="aegis",
 )
