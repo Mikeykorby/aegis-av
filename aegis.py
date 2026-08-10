@@ -7,6 +7,29 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+
+def resource_path(rel: str) -> str:
+    """Resolve a bundled resource path.
+
+    When frozen with PyInstaller the app is extracted under sys._MEIPASS.
+    PyInstaller 6.x collects data files into an _internal/ subfolder, so we
+    check both the MEIPASS root and its _internal child. When run from source
+    it's next to this file.
+    """
+    candidates = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        candidates.append(meipass)
+        candidates.append(os.path.join(meipass, "_internal"))
+    candidates.append(os.path.dirname(os.path.abspath(__file__)))
+    for base in candidates:
+        p = os.path.join(base, rel)
+        if os.path.exists(p):
+            return p
+    # fall back to first candidate even if missing (caller handles absence)
+    return os.path.join(candidates[0], rel)
+
+
 # Declare DPI awareness BEFORE any window exists. On this machine Windows runs
 # at 150% scaling; without this the WebView is created at a virtualised size and
 # the layout is clipped on the right edge.
@@ -30,8 +53,9 @@ from engine import store                                         # noqa: E402
 from engine.api import Api                                       # noqa: E402
 from engine.tray import TrayIcon, show_window, hide_window       # noqa: E402
 
-UI_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui")
+UI_DIR = resource_path("ui")
 INDEX = os.path.join(UI_DIR, "index.html")
+
 
 _MUTEX = None
 _BOOT_MUTEX = None
@@ -276,7 +300,7 @@ def _bootstrap(api: Api, window) -> None:
     # ── System tray: the app stays alive (and keeps protecting) in the tray
     #    when the UI is closed. The tray menu can Open the UI, enable/disable
     #    real-time protection, or Quit. The window's X only hides to tray.
-    ico = os.path.join(UI_DIR, "aegis.ico")
+    ico = resource_path(os.path.join("ui", "aegis.ico"))
     tray = TrayIcon(
         ico,
         "Aegis Security",
@@ -325,7 +349,7 @@ def _set_window_icon(window) -> None:
         return
     try:
         import ctypes
-        ico = os.path.join(UI_DIR, "aegis.ico")
+        ico = resource_path(os.path.join("ui", "aegis.ico"))
         if not os.path.exists(ico):
             return
         u = ctypes.windll.user32
@@ -416,10 +440,20 @@ def main() -> int:
     os.environ["WEBVIEW2_USER_DATA_FOLDER"] = _wv2
     atexit.register(lambda: _shutil.rmtree(_wv2, ignore_errors=True))
 
+    # Stability: force software rendering. On this machine the default GPU
+    # path makes the WebView2 renderer crash mid-launch ("refresh the page" /
+    # Aw-Snap), leaving a blank UI. Disabling GPU + software rasterizer keeps
+    # the renderer alive. Append so the optional CDP flag below still wins.
+    _wv_args = "--disable-gpu --disable-software-rasterizer --disable-dev-shm-usage --disable-features=msWebView2Update"
+    if os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"):
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] += " " + _wv_args
+    else:
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = _wv_args
+
     # Optional remote-debugging port for automated UI verification.
     if os.environ.get("AEGIS_CDP"):
-        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
-            "--remote-debugging-port=" + os.environ["AEGIS_CDP"] +
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] += (
+            " --remote-debugging-port=" + os.environ["AEGIS_CDP"] +
             " --remote-allow-origins=*")
 
     api = Api()
