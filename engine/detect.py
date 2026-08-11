@@ -264,7 +264,7 @@ class Engine:
                     line = line.strip()
                     if not line or line.startswith("#"):
                         continue
-                    m = re.match(r"https?://([^/:\\s]+)", line)
+                    m = re.match(r"https?://([^/\s]+)", line)
                     if m:
                         self.url_hosts.add(m.group(1).lower())
         except Exception:
@@ -691,7 +691,7 @@ class Engine:
 
     # ---------------------------------------------------------- url checks
     def check_url(self, url: str) -> dict:
-        m = re.match(r"(?:https?://)?([^/:\\s]+)", url.strip(), re.I)
+        m = re.match(r"(?:https?://)?([^/\s]+)", url.strip(), re.I)
         host = (m.group(1) if m else url).lower()
         blocked = host in self.url_hosts
         if not blocked:                       # check parent domain
