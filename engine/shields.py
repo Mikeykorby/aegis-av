@@ -74,6 +74,30 @@ HOT_PATHS = [
                  "Templates"),
 ]
 
+
+def _wv2_ancestor_of(path: str, wv2: str) -> bool:
+    """True if `path` must be skipped because it overlaps the WebView2 profile.
+
+    Returns True when `path` is the profile itself, a *descendant* of it
+    (path is inside the profile), or an *ancestor* of it (path contains the
+    profile — e.g. %LOCALAPPDATA% / %TEMP%). The File Shield must never watch
+    the profile or any folder that contains it: it opens every written file to
+    scan it, and racing the renderer for its profile writes causes
+    share-violations that crash the renderer ("refresh the page" / blank UI).
+    `wv2` should already be normalised via os.path.normcase/normpath.
+    """
+    if not wv2:
+        return False
+    pn = os.path.normcase(os.path.normpath(path))
+    # path is the profile itself, or a descendant inside it
+    if pn == wv2 or pn.startswith(wv2 + os.sep):
+        return True
+    # path is an ancestor that *contains* the profile (e.g. %LOCALAPPDATA% /
+    # %TEMP%) — i.e. the profile lives somewhere beneath it
+    if wv2.startswith(pn + os.sep):
+        return True
+    return False
+
 # Watchdog observers can't open some system-protected directories (e.g. the
 # system TEMP under C:\Windows) and raise "Access is denied", which would make
 # the whole File Shield fail to start. Drop any path inside C:\Windows and
@@ -230,22 +254,7 @@ class ShieldManager:
                 for p in HOT_PATHS:
                     if not p or not os.path.isdir(p):
                         continue
-                    pn = os.path.normcase(os.path.normpath(p))
-                    skip = False
-                    if _wv2:
-                        # skip the profile itself AND any ancestor (e.g.
-                        # %LOCALAPPDATA% or %TEMP% that contains it), so the
-                        # recursive observer never descends into it.
-                        if pn == _wv2 or pn.startswith(_wv2 + os.sep):
-                            skip = True
-                        else:
-                            _anc = _wv2
-                            while _anc and _anc not in ("", os.sep):
-                                _anc = os.path.dirname(_anc)
-                                if pn == _anc or pn.startswith(_anc + os.sep):
-                                    skip = True
-                                    break
-                    if skip:
+                    if _wv2_ancestor_of(p, _wv2):
                         continue
                     self._observer.schedule(h, p, recursive=True)
                     added += 1
