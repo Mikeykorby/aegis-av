@@ -144,38 +144,45 @@ async function pollEvents() {
   });
 }
 
-/* ── title bar ──────────────────────────────────────────────
-   pywebview's easy_drag handler listens on document.body and walks UP the
-   DOM from the event target, so a click on a window button would also start
-   a window drag. Stop it at the capture phase so the buttons stay clickable.
-   (The Electron -webkit-app-region:no-drag property has no effect here.) */
-document.addEventListener('mousedown', (e) => {
-  if (e.target.closest('.winbtn')) e.stopPropagation();
-}, true);
+/* ── title bar / frameless drag + resize ───────────────────
+   The window is frameless (no OS borders), so we implement moving and
+   resizing ourselves from ONE document-level mousedown handler (the same
+   mechanism that already works for moving). Resize is edge-proximity based,
+   so it no longer depends on invisible .rz divs being hittable. Both stop
+   precisely on mouseup, so the window never keeps drifting after release. */
+const EDGE = 8;          // grab margin from the window border
+const _MIN_W = 1060, _MIN_H = 700;
 
-/* Double-clicking the title bar maximises/restores, like every Windows app. */
-document.addEventListener('dblclick', (e) => {
-  if (e.target.closest('.winbtn')) return;
-  if (e.target.closest('#titlebar') && API) API.toggle_maximize();
-});
-
-/* Explicit title-bar drag. We use easy_drag=False (so the content area never
-   spawns a runaway native drag) and drag ONLY from #titlebar here, stopping
-   precisely on mouseup so the window never keeps moving after you let go. */
 document.addEventListener('mousedown', (e) => {
-  // let the .winbtn stop-propagation handler above keep buttons clickable
-  if (e.target.closest('.winbtn')) return;
-  const bar = e.target.closest('#titlebar');
-  if (!bar) return;
+  if (e.target.closest('.winbtn')) return;          // keep buttons clickable
+  if (!API || typeof API.get_window_rect !== 'function') return;
+
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const cx = e.clientX, cy = e.clientY;
+  let edge = '';                                      // which edges are we near?
+  if (cy <= EDGE) edge += 'n';
+  if (cy >= vh - EDGE) edge += 's';
+  if (cx <= EDGE) edge += 'w';
+  if (cx >= vw - EDGE) edge += 'e';
+  const onTitle = !!e.target.closest('#titlebar');
+
+  if (!edge && !onTitle) return;                       // let content handle it
+
   e.preventDefault();
   let rect = null;
   try { rect = API.get_window_rect(); } catch (err) { return; }
   if (!rect || !rect.ok) return;
-  const sx = e.clientX, sy = e.clientY;
-  const ox = rect.x, oy = rect.y;
+  const sx = cx, sy = cy;
+  const ox = rect.x, oy = rect.y, ow = rect.w, oh = rect.h;
+
   const move = (ev) => {
     const dx = ev.clientX - sx, dy = ev.clientY - sy;
-    try { API.set_window_rect(ox + dx, oy + dy, rect.w, rect.h); } catch (err) {}
+    let x = ox, y = oy, w = ow, h = oh;
+    if (edge.includes('e')) w = Math.max(_MIN_W, ow + dx);
+    if (edge.includes('s')) h = Math.max(_MIN_H, oh + dy);
+    if (edge.includes('w')) { w = Math.max(_MIN_W, ow - dx); x = ox + (ow - w); }
+    if (edge.includes('n')) { h = Math.max(_MIN_H, oh - dy); y = oy + (oh - h); }
+    try { API.set_window_rect(x, y, w, h); } catch (err) {}
     ev.preventDefault();
   };
   const up = () => {
@@ -187,43 +194,15 @@ document.addEventListener('mousedown', (e) => {
   document.addEventListener('mouseup', up);
 });
 
-/* Frameless window has no OS resize borders — implement edge-drag resize.
-   We read the window rect from Python, then on each pointer move recompute
-   the rect for the grabbed edge and push it back via set_window_rect. */
-let _RZ = null;
-function initResize() {
-  const MIN_W = 1060, MIN_H = 700;
-  $$('.rz').forEach(z => {
-    z.addEventListener('mousedown', (e) => {
-      e.preventDefault(); e.stopPropagation();
-      const edge = z.dataset.e;
-      let rect = null;
-      try { rect = API.get_window_rect(); } catch (err) { return; }
-      if (!rect || !rect.ok) return;
-      const sx = e.clientX, sy = e.clientY;
-      const ox = rect.x, oy = rect.y, ow = rect.w, oh = rect.h;
-      const move = (ev) => {
-        const dx = ev.clientX - sx, dy = ev.clientY - sy;
-        let x = ox, y = oy, w = ow, h = oh;
-        if (edge.includes('e')) w = Math.max(MIN_W, ow + dx);
-        if (edge.includes('s')) h = Math.max(MIN_H, oh + dy);
-        if (edge.includes('w')) { w = Math.max(MIN_W, ow - dx); x = ox + (ow - w); }
-        if (edge.includes('n')) { h = Math.max(MIN_H, oh - dy); y = oy + (oh - h); }
-        try { API.set_window_rect(x, y, w, h); } catch (err) {}
-        ev.preventDefault();
-      };
-      const up = () => {
-        document.removeEventListener('mousemove', move);
-        document.removeEventListener('mouseup', up);
-        _RZ = null;
-        document.body.style.cursor = '';
-      };
-      _RZ = edge;
-      document.addEventListener('mousemove', move);
-      document.addEventListener('mouseup', up);
-    });
-  });
-}
+// The .rz divs are kept only as a hover affordance; the real grip logic above
+// is edge-proximity based, so initResize is now a no-op.
+function initResize() { /* resizing handled by the unified mousedown handler */ }
+
+/* Double-clicking the title bar maximises/restores, like every Windows app. */
+document.addEventListener('dblclick', (e) => {
+  if (e.target.closest('.winbtn')) return;
+  if (e.target.closest('#titlebar') && API) API.toggle_maximize();
+});
 
 /* ── boot ───────────────────────────────────────────────── */
 window.addEventListener('pywebviewready', async () => {
