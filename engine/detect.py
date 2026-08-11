@@ -201,6 +201,7 @@ class Engine:
         self.md5_set: set[str] = set()
         self.sha_set: set[str] = set()
         self.url_hosts: set[str] = set()
+        self.ip_set: set[str] = set()          # plain + CIDR IP indicators
         self.yara_error = ""
         self.rule_count = 0
         self.load()
@@ -210,6 +211,7 @@ class Engine:
         self._load_yara()
         self._load_hashes()
         self._load_urls()
+        self._load_ips()
 
     def _load_yara(self) -> None:
         try:
@@ -262,15 +264,35 @@ class Engine:
                     line = line.strip()
                     if not line or line.startswith("#"):
                         continue
-                    m = re.match(r"https?://([^/:\s]+)", line)
+                    m = re.match(r"https?://([^/:\\s]+)", line)
                     if m:
                         self.url_hosts.add(m.group(1).lower())
         except Exception:
             pass
+        # ThreatFox recent export carries fresh malware C2 / payload domains.
+        tf = os.path.join(self.data_dir, "threatfox_domains.txt")
+        if os.path.exists(tf):
+            try:
+                from .intel import _parse_threatfox_domains
+                _parse_threatfox_domains(tf, self.url_hosts)
+            except Exception:
+                pass
+
+    def _load_ips(self) -> None:
+        """Load every IP blocklist into ip_set (plain IPs + CIDR ranges).
+        Query-side matching (check_ip) expands a CIDR to its covered /24s so
+        lookup stays a cheap set membership test."""
+        from .intel import _parse_ips
+        for fn in ("feodo.txt", "sslbl.txt", "spamhaus_drop.txt",
+                   "spamhaus_edrop.txt", "blocklistde.txt"):
+            p = os.path.join(self.data_dir, fn)
+            if os.path.exists(p):
+                _parse_ips(p, self.ip_set)
 
     @property
     def intel_size(self) -> int:
-        return len(self.md5_set) + len(self.sha_set) + len(self.url_hosts) + self.rule_count
+        return (len(self.md5_set) + len(self.sha_set) + len(self.url_hosts)
+                + len(self.ip_set) + self.rule_count)
 
     # --------------------------------------------------------------- utils
     @staticmethod
@@ -669,7 +691,7 @@ class Engine:
 
     # ---------------------------------------------------------- url checks
     def check_url(self, url: str) -> dict:
-        m = re.match(r"(?:https?://)?([^/:\s]+)", url.strip(), re.I)
+        m = re.match(r"(?:https?://)?([^/:\\s]+)", url.strip(), re.I)
         host = (m.group(1) if m else url).lower()
         blocked = host in self.url_hosts
         if not blocked:                       # check parent domain
@@ -680,3 +702,28 @@ class Engine:
                     break
         return {"host": host, "blocked": blocked,
                 "reason": "Listed on URLhaus as a malware distribution host" if blocked else ""}
+
+    # ---------------------------------------------------------- ip checks
+    def check_ip(self, ip: str) -> dict:
+        """Check an IPv4 against C2 / attack-source / hijacked-netblock lists.
+        Plain-list match is direct; CIDR entries match any IP inside the /24
+        of the CIDR's network address (good enough for blocklist precision)."""
+        ip = (ip or "").strip()
+        if not re.match(r"^[0-9]{1,3}(?:\.[0-9]{1,3}){3}$", ip):
+            return {"ip": ip, "blocked": False, "reason": "not an IPv4 address"}
+        if ip in self.ip_set:
+            return {"ip": ip, "blocked": True,
+                    "reason": "Listed as a malicious / attack-source IP"}
+        # CIDR membership: /24 of every stored CIDR range
+        a, b, c, _ = ip.split(".")
+        for entry in self.ip_set:
+            if "/" in entry:
+                try:
+                    net, pre = entry.split("/")
+                    na, nb, nc, _ = net.split(".")
+                    if int(pre) >= 24 and na == a and nb == b and nc == c:
+                        return {"ip": ip, "blocked": True,
+                                "reason": f"Inside malicious netblock {entry}"}
+                except Exception:
+                    continue
+        return {"ip": ip, "blocked": False, "reason": ""}

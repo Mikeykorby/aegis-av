@@ -519,6 +519,14 @@ class Api:
             self.shields.stats["web_blocked"] += 1
         return r
 
+    def check_ip(self, ip: str) -> dict:
+        """Expose the engine IP reputation check (C2 / attack-source lists)."""
+        r = self.engine.check_ip(ip)
+        if r["blocked"]:
+            store.log("web", "high", f"Blocked malicious IP: {r['ip']}", r["reason"])
+            self.shields.stats["web_blocked"] += 1
+        return r
+
     def scan_path(self, path: str) -> dict:
         """One-off scan of a single file (drag & drop / right-click flow)."""
         if not path or not os.path.exists(path):
@@ -544,6 +552,7 @@ class Api:
                      if self.engine.yara_rules else f"unavailable — {self.engine.yara_error}"),
             "signatures": len(self.engine.md5_set) + len(self.engine.sha_set),
             "urls": len(self.engine.url_hosts),
+            "ips": len(self.engine.ip_set),
         }
         return s
 
