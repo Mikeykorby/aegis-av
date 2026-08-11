@@ -159,6 +159,34 @@ document.addEventListener('dblclick', (e) => {
   if (e.target.closest('#titlebar') && API) API.toggle_maximize();
 });
 
+/* Explicit title-bar drag. We use easy_drag=False (so the content area never
+   spawns a runaway native drag) and drag ONLY from #titlebar here, stopping
+   precisely on mouseup so the window never keeps moving after you let go. */
+document.addEventListener('mousedown', (e) => {
+  // let the .winbtn stop-propagation handler above keep buttons clickable
+  if (e.target.closest('.winbtn')) return;
+  const bar = e.target.closest('#titlebar');
+  if (!bar) return;
+  e.preventDefault();
+  let rect = null;
+  try { rect = API.get_window_rect(); } catch (err) { return; }
+  if (!rect || !rect.ok) return;
+  const sx = e.clientX, sy = e.clientY;
+  const ox = rect.x, oy = rect.y;
+  const move = (ev) => {
+    const dx = ev.clientX - sx, dy = ev.clientY - sy;
+    try { API.set_window_rect(ox + dx, oy + dy, rect.w, rect.h); } catch (err) {}
+    ev.preventDefault();
+  };
+  const up = () => {
+    document.removeEventListener('mousemove', move);
+    document.removeEventListener('mouseup', up);
+    document.body.style.cursor = '';
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+});
+
 /* Frameless window has no OS resize borders — implement edge-drag resize.
    We read the window rect from Python, then on each pointer move recompute
    the rect for the grabbed edge and push it back via set_window_rect. */

@@ -469,7 +469,7 @@ def main() -> int:
         min_size=(1060, 700),
         background_color="#0d1117",
         frameless=True,
-        easy_drag=True,
+        easy_drag=False,
         text_select=False,
     )
 

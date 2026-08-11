@@ -57,6 +57,20 @@ body{
 #titlebar .winbtn.close:hover{background:rgba(239,90,90,.18);color:#ff9a9a}
 #titlebar .winbtn svg{width:11px;height:11px}
 
+/* ── frameless resize zones ──
+   Fixed to the window edges; thin hit-strips (6px) with wider corner grabs.
+   Floats above content (z-index 30); pointer-events:auto so edges grab. */
+.rz{position:fixed;z-index:30;pointer-events:auto;background:transparent}
+.rz.n{top:0;left:8px;right:8px;height:6px;cursor:ns-resize}
+.rz.s{bottom:0;left:8px;right:8px;height:6px;cursor:ns-resize}
+.rz.w{top:8px;bottom:8px;left:0;width:6px;cursor:ew-resize}
+.rz.e{top:8px;bottom:8px;right:0;width:6px;cursor:ew-resize}
+.rz.nw{top:0;left:0;width:12px;height:12px;cursor:nwse-resize}
+.rz.ne{top:0;right:0;width:12px;height:12px;cursor:nesw-resize}
+.rz.sw{bottom:0;left:0;width:12px;height:12px;cursor:nesw-resize}
+.rz.se{bottom:0;right:0;width:12px;height:12px;cursor:nwse-resize}
+.rz:hover{background:rgba(192,64,43,.35)}
+
 /* ═════════════════════════════ SHELL / NAV ════════════════════ */
 #shell{flex:1;display:flex;min-height:0}
 #nav{
