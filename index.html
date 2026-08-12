@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS — Endpoint Defense Dossier</title>
+<meta name="description" content="Aegis endpoint defense: four Avast-style core shields, a kernel-mini-filter companion, and live threat-intel feeds — dossier-grade protection for Windows.">
+<style>
+  :root{
+    --bg:#12100c;
+    --bg-2:#1a1712;
+    --panel:#1e1a14;
+    --ink:#e9e2d2;
+    --ink-dim:#9a9183;
+    --rule:#332e25;
+    --accent:#c0402b;
+    --accent-2:#e0533c;
+    --good:#5fae7a;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --serif:Georgia,"Times New Roman",serif;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);line-height:1.55;letter-spacing:.1px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* classification banner */
+  .banner{
+    background:var(--accent);color:#fff;font-family:var(--mono);
+    font-size:11px;letter-spacing:3px;text-transform:uppercase;
+    text-align:center;padding:6px 0;font-weight:600;
+  }
+
+  /* nav */
+  header.nav{
+    position:sticky;top:0;z-index:50;background:rgba(18,16,12,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);
+  }
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);
+    font-size:22px;font-weight:700;letter-spacing:2px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 10px var(--accent)}
+  nav.links{display:flex;gap:26px;font-size:13px;letter-spacing:1px;
+    text-transform:uppercase;color:var(--ink-dim)}
+  nav.links a:hover{color:var(--ink)}
+  .menu-btn{display:none;background:none;border:1px solid var(--rule);color:var(--ink);
+    padding:6px 10px;border-radius:6px;font-size:13px}
+
+  /* hero */
+  .hero{padding:84px 0 64px;border-bottom:1px solid var(--rule);
+    background:radial-gradient(1200px 400px at 80% -10%,rgba(192,64,43,.18),transparent 60%)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:4px;
+    text-transform:uppercase;color:var(--accent-2);margin-bottom:18px}
+  h1{font-family:var(--serif);font-size:clamp(40px,7vw,76px);line-height:1.02;
+    margin:0 0 18px;letter-spacing:1px}
+  h1 .em{color:var(--accent)}
+  .lede{font-size:18px;color:var(--ink-dim);max-width:640px;margin:0 0 30px}
+  .cta{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:8px;
+    font-size:14px;font-weight:600;letter-spacing:.5px;border:1px solid transparent}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-2)}
+  .btn.ghost{border-color:var(--rule);color:var(--ink)}
+  .btn.ghost:hover{border-color:var(--ink-dim)}
+
+  /* section scaffolding */
+  section{padding:64px 0;border-bottom:1px solid var(--rule)}
+  .sec-h{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+  .sec-n{font-family:var(--mono);font-size:12px;color:var(--accent-2);letter-spacing:2px}
+  h2{font-family:var(--serif);font-size:clamp(26px,4vw,38px);margin:0;letter-spacing:.5px}
+  .sec-sub{color:var(--ink-dim);max-width:680px;margin:6px 0 36px}
+
+  /* shield grid */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .card{background:var(--panel);border:1px solid var(--rule);border-radius:12px;
+    padding:22px 22px 20px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:.0}
+  .card:hover::before{opacity:1}
+  .card h3{margin:0 0 4px;font-size:18px;letter-spacing:.5px}
+  .card .tag{font-family:var(--mono);font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--accent-2);margin-bottom:12px}
+  .card p{margin:0;color:var(--ink-dim);font-size:14px}
+  .card ul{margin:12px 0 0;padding-left:16px;color:var(--ink-dim);font-size:13px}
+  .card li{margin:4px 0}
+
+  /* kernel feature */
+  .kernel{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:center}
+  .kernel .copy p{color:var(--ink-dim)}
+  .feat-list{list-style:none;margin:18px 0 0;padding:0}
+  .feat-list li{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--rule);font-size:14px}
+  .feat-list li:first-child{border-top:none}
+  .tick{color:var(--accent-2);font-family:var(--mono);font-weight:700}
+  .note{margin-top:18px;font-size:12.5px;color:var(--ink-dim);font-family:var(--mono);
+    border-left:2px solid var(--accent);padding-left:12px}
+
+  /* intel chips */
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  .chip{font-family:var(--mono);font-size:12px;letter-spacing:1px;
+    border:1px solid var(--rule);border-radius:999px;padding:7px 14px;color:var(--ink-dim)}
+  .chip b{color:var(--ink)}
+  .live{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--good);margin-bottom:14px}
+  .live .pulse{width:8px;height:8px;border-radius:50%;background:var(--good);
+    box-shadow:0 0 0 0 rgba(95,174,122,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,174,122,.5)}70%{box-shadow:0 0 0 9px rgba(95,174,122,0)}100%{box-shadow:0 0 0 0 rgba(95,174,122,0)}}
+
+  /* no-signature matrix */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+    color:var(--accent-2)}
+  td b{color:var(--ink)}
+  .ok{color:var(--good)} .warn{color:#d8b24a} .bad{color:var(--accent-2)}
+
+  footer{padding:40px 0 56px;color:var(--ink-dim);font-size:13px}
+  footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;align-items:center}
+  footer a{color:var(--ink)}
+  footer .mono{font-family:var(--mono);font-size:11px;letter-spacing:1px}
+
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media(max-width:760px){
+    nav.links{display:none}
+    .menu-btn{display:inline-block}
+    nav.links.open{display:flex;position:absolute;top:60px;left:0;right:0;
+      flex-direction:column;gap:0;background:var(--bg-2);border-bottom:1px solid var(--rule);padding:8px 24px}
+    nav.links.open a{padding:12px 0;border-bottom:1px solid var(--rule)}
+    .grid{grid-template-columns:1fr}
+    .kernel{grid-template-columns:1fr;gap:24px}
+  }
+</style>
+</head>
+<body>
+<div class="banner">AEGIS // ENDPOINT DOSSIER // BUILD v2.1.0</div>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <div class="brand"><span class="dot"></span>AEGIS</div>
+    <button class="menu-btn" id="menuBtn">MENU</button>
+    <nav class="links" id="navLinks">
+      <a href="#shields">Shields</a>
+      <a href="#kernel">Kernel</a>
+      <a href="#intel">Intel</a>
+      <a href="#nosig">No-Signature</a>
+      <a href="https://github.com/Mikeykorby/aegis-av" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero" style="border-bottom:1px solid var(--rule)">
+    <div class="wrap">
+      <div class="kicker">Endpoint Defense · Dossier-Grade</div>
+      <h1>Four shields.<br>One <span class="em">kernel</span> companion.</h1>
+      <p class="lede">Aegis is a Windows antivirus built around Avast-style core shields,
+      live threat-intel feeds, and an optional kernel mini-filter that blocks malware
+      <em>before it executes</em>. Free to run — no license, no phoning home.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/Mikeykorby/aegis-av" target="_blank" rel="noopener">View on GitHub</a>
+        <a class="btn ghost" href="#kernel">The kernel companion →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHIELDS -->
+  <section id="shields">
+    <div class="wrap">
+      <div class="sec-h"><span class="sec-n">01</span><h2>Core Shields</h2></div>
+      <p class="sec-sub">Each shield has a global master switch and its own per-shield toggle —
+      the same model as a commercial AV, but you stay in control of every layer.</p>
+      <div class="grid">
+        <div class="card reveal">
+          <div class="tag">File Shield</div>
+          <h3>Real-time file scanning</h3>
+          <p>Scans files on write and on execution.</p>
+          <ul>
+            <li>YARA rule matching + ClamAV signature DB</li>
+            <li>SHA-256 deny-list enforcement</li>
+            <li>Kernel pre-exec block via the companion driver</li>
+          </ul>
+        </div>
+        <div class="card reveal">
+          <div class="tag">Behavior Shield</div>
+          <h3>Process behavior monitoring</h3>
+          <p>Watches what running processes try to do.</p>
+          <ul>
+            <li>Ransomware burst detection (mass file rename/encrypt)</li>
+            <li>Suspicious child-process / injection heuristics</li>
+            <li>ETW + WMI process-create telemetry</li>
+          </ul>
+        </div>
+        <div class="card reveal">
+          <div class="tag">Web Shield</div>
+          <h3>Malicious-domain blocking</h3>
+          <p>Stops connections to known-bad infrastructure.</p>
+          <ul>
+            <li>Live blocklists: URLhaus, Feodo, SSLBL, ThreatFox, Spamhaus</li>
+            <li>DNS + connection-level interception (WFP-ready)</li>
+            <li>IP / URL reputation scoring</li>
+          </ul>
+        </div>
+        <div class="card reveal">
+          <div class="tag">Mail Shield</div>
+          <h3>Attachment &amp; script screening</h3>
+          <p>Inspects what arrives through mail flows.</p>
+          <ul>
+            <li>Attachment hash + archive unpacking checks</li>
+            <li>Script/macro payload detection via AMSI</li>
+            <li>Quarantine on hit, never auto-execute</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KERNEL -->
+  <section id="kernel">
+    <div class="wrap kernel">
+      <div class="copy reveal">
+        <div class="sec-h"><span class="sec-n">02</span><h2>The Kernel Companion</h2></div>
+        <p>A separate, source-only driver + agent pair (<code style="font-family:var(--mono)">aegis-kernel</code>)
+        pushes protection below user mode — where malware can't yet fight back.</p>
+        <ul class="feat-list">
+          <li><span class="tick">▸</span><span><b>Pre-execution file block.</b> A mini-filter denies launch of deny-listed hashes before a single instruction runs.</span></li>
+          <li><span class="tick">▸</span><span><b>Ransomware IRP block.</b> Mass-encrypt patterns are stopped at the I/O-request level, not after the fact.</span></li>
+          <li><span class="tick">▸</span><span><b>True self-defense.</b> ObRegisterCallbacks deny tamper on the protected Aegis PID; a signed build runs as a Protected Process.</span></li>
+        </ul>
+        <div class="note">Builds end-to-end in GitHub Actions (driver + agent → x64 PE artifacts).
+        Loads free via Windows <b>Test Signing</b> mode; an EV cert + WHQL is only required to keep Secure Boot on.</div>
+      </div>
+      <div class="copy reveal">
+        <div style="border:1px solid var(--rule);border-radius:12px;background:var(--panel);padding:20px">
+          <div class="tag" style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--accent-2);text-transform:uppercase">Companion Repo</div>
+          <h3 style="margin:6px 0 10px;font-size:20px">aegis-kernel</h3>
+          <p style="color:var(--ink-dim);font-size:14px;margin:0 0 16px">C mini-filter driver · C++ user-mode agent · bridges to the Python engine over a custom comm port.</p>
+          <a class="btn ghost" href="https://github.com/Mikeykorby/aegis-kernel" target="_blank" rel="noopener">Open aegis-kernel →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTEL -->
+  <section id="intel">
+    <div class="wrap">
+      <div class="sec-h"><span class="sec-n">03</span><h2>Threat Intelligence</h2></div>
+      <p class="sec-sub">Aegis pulls from public, no-cost feeds and refreshes its local blocklists on a schedule.</p>
+      <div class="live"><span class="pulse"></span> Live feed ingestion</div>
+      <div class="chips">
+        <span class="chip"><b>URLhaus</b> · malware URLs</span>
+        <span class="chip"><b>Feodo</b> · botnet C2</span>
+        <span class="chip"><b>SSLBL</b> · bad SSL certs</span>
+        <span class="chip"><b>ThreatFox</b> · IOC exchange</span>
+        <span class="chip"><b>Spamhaus</b> · drop/exploit</span>
+        <span class="chip"><b>blocklist.de</b> · attack sources</span>
+        <span class="chip"><b>AlienVault OTX</b> · pulses</span>
+        <span class="chip"><b>MITRE</b> · ATT&amp;CK mapping</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- NO SIGNATURE -->
+  <section id="nosig">
+    <div class="wrap">
+      <div class="sec-h"><span class="sec-n">04</span><h2>Kernel-like, without a signature?</h2></div>
+      <p class="sec-sub">You don't need a code-signing certificate (EV + WHQL) to get <em>most</em> of a kernel driver's
+      power. Windows already ships Microsoft-signed enforcement layers you can orchestrate from user mode.</p>
+      <table>
+        <thead><tr><th>Layer</th><th>What it gives you</th><th>Needs signing?</th><th>Secure Boot</th></tr></thead>
+        <tbody>
+          <tr><td><b>AppLocker / WDAC</b></td><td>Kernel-enforced allow/deny of executables, DLLs, scripts</td><td class="warn">AppLocker: no · WDAC enforced: policy-signed</td><td class="ok">Yes</td></tr>
+          <tr><td><b>WFP</b></td><td>Kernel-enforced network/DNS blocking (the Web Shield)</td><td class="ok">No — registered from user mode</td><td class="ok">Yes</td></tr>
+          <tr><td><b>Defender CFA + Tamper</b></td><td>Ransomware folder guard + self-protection</td><td class="ok">Microsoft-signed</td><td class="ok">Yes</td></tr>
+          <tr><td><b>AMSI</b></td><td>Real-time script / PowerShell payload scanning</td><td class="ok">No</td><td class="ok">Yes</td></tr>
+          <tr><td><b>aegis-kernel .sys</b></td><td>IRP-level file block + true Protected-Process self-defense</td><td class="warn">Test-sign (free, SB off) or EV+WHQL (SB on)</td><td class="bad">Only with cert</td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--ink-dim);font-size:14px;margin-top:20px">
+        <b style="color:var(--ink)">The honest line:</b> AppLocker/WDAC + WFP + Defender + AMSI get you kernel-<i>enforced</i>
+        protection with Secure Boot fully on and zero signing cost. What they can't do for free is
+        <i>IRP-level</i> file interception and <i>tamper-proof</i> self-defense — those truly need a signed driver,
+        which is exactly what <code style="font-family:var(--mono)">aegis-kernel</code> provides (test-signed, free, or WHQL for production).</p>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="border-bottom:none">
+    <div class="wrap" style="text-align:center">
+      <h2 style="font-family:var(--serif);font-size:clamp(26px,4vw,38px);margin:0 0 14px">Build it. Run it. Own it.</h2>
+      <p class="sec-sub" style="margin:0 auto 26px">Source, drivers, and CI are all public. No account, no telemetry, no paywall.</p>
+      <div class="cta" style="justify-content:center">
+        <a class="btn primary" href="https://github.com/Mikeykorby/aegis-av" target="_blank" rel="noopener">aegis-av</a>
+        <a class="btn ghost" href="https://github.com/Mikeykorby/aegis-kernel" target="_blank" rel="noopener">aegis-kernel</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <div>AEGIS endpoint defense · <span class="mono">v2.1.0</span></div>
+    <div><a href="https://github.com/Mikeykorby/aegis-av" target="_blank" rel="noopener">github.com/Mikeykorby/aegis-av</a></div>
+    <div class="mono">FREE · TEST-SIGNING PATH · NO TELEMETRY</div>
+  </div>
+</footer>
+
+<script>
+  // mobile nav
+  var mb=document.getElementById('menuBtn'),nl=document.getElementById('navLinks');
+  mb&&mb.addEventListener('click',function(){nl.classList.toggle('open')});
+  nl&&nl.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){nl.classList.remove('open')})});
+  // reveal on scroll
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+</script>
+</body>
+</html>
