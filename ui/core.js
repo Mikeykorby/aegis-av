@@ -88,9 +88,10 @@ function go(p) {
   if (p === 'home') refreshDash();
   if (p === 'firewall') loadFirewall();
   if (p === 'privacy') loadPrivacy();
+  if (p === 'sensitive') loadSensitive();
   if (p === 'vpn') loadVpn();
   if (p === 'brute') runBruteScan();
-  if (p === 'shred') {}   // file picker on demand
+  if (p === 'shred') loadShredderAlgos();   // file picker on demand
 }
 $$('.navitem').forEach(n => n.onclick = () => go(n.dataset.p));
 

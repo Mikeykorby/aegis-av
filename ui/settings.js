@@ -121,6 +121,141 @@ async function loadSettings() {
     '<dt>Intelligence</dt><dd>abuse.ch MalwareBazaar · URLhaus · YARA Forge</dd>';
 
   await loadStartup();
+  await loadAppUpdater();
+  await loadSelfDefense();
+  await loadGeneral();
+  await loadShredSettings();
+}
+
+/* General & Notifications: Silent Mode, Passive Mode, data sharing (Avast-style) */
+async function loadGeneral() {
+  const s = SETTINGS;
+  const rows = [
+    ['general.silent', 'Silent Mode',
+      'Stop all pop-ups, alerts and sounds — ideal for gaming or movies.'],
+    ['general.passive', 'Passive Mode',
+      'Turn off all active shields so Aegis can run alongside another antivirus (e.g. Norton, McAfee).'],
+    ['general.community_iq', 'Share with Community IQ',
+      'Send anonymous detection data to Aegis to improve the engine.'],
+    ['general.third_party', 'Third-party sharing',
+      'Allow sharing anonymised data for analytics/marketing.']
+  ];
+  $('#setGeneral').innerHTML = rows.map(([k, t, d]) => {
+    const on = !!s[k];
+    return '<div class="trow ' + (on ? 'on' : 'off') + '"><div class="tb"><div class="tt">' + t +
+      '</div><div class="td">' + d + '</div></div>' +
+      '<div class="sw ' + (on ? 'on' : '') + '" data-g="' + k + '"></div></div>';
+  }).join('') +
+    '<div class="trow"><div class="tb"><div class="tt">Pop-up duration</div>' +
+    '<div class="td">How long alerts stay on screen (1s for gaming, 20s default).</div></div>' +
+    '<div class="inline" style="flex:0 0 130px"><input type="number" id="setPop" min="1" max="60" value="' +
+    (s['general.popup_sec'] || 20) + '"><span class="mut" style="font-size:12px">s</span></div></div>';
+  $$('#setGeneral .sw').forEach(sw => sw.onclick = async () => {
+    const k = sw.dataset.g, on = !sw.classList.contains('on');
+    sw.classList.toggle('on');
+    sw.closest('.trow').className = 'trow ' + (on ? 'on' : 'off');
+    await API.set_setting(k, on);
+    if (k === 'general.passive') {
+      if (on) { await API.shields_stop(); toast('Passive mode on', 'Active shields disabled', 'warn'); }
+      else { await API.shields_all_on(); toast('Active shields restored', '', 'ok'); }
+      refreshDash();
+    } else toast((on ? 'Enabled ' : 'Disabled ') + k.split('.').pop(), '', on ? 'ok' : 'warn');
+  });
+  $('#setPop').onchange = e => API.set_setting('general.popup_sec', Number(e.target.value));
+}
+
+/* Self-Defense: stop malware from tampering with/uninstalling Aegis */
+async function loadSelfDefense() {
+  const r = await API.self_defense_status();
+  const on = !!r.enabled;
+  $('#setSelfDef').innerHTML =
+    '<div class="trow ' + (on ? 'on' : 'off') + '"><div class="tb"><div class="tt">Enable Self-Defense</div>' +
+    '<div class="td">Deny non-admins write/delete on the Aegis program folder so malware cannot disable or uninstall it. Uncheck only to manually delete Aegis files.</div></div>' +
+    '<div class="sw ' + (on ? 'on' : '') + '" id="sdDefSw"></div></div>';
+  $('#sdDefSw').onclick = async () => {
+    const want = !$('#sdDefSw').classList.contains('on');
+    const res = await API.self_defense_set(want);
+    if (res.ok) { $('#sdDefSw').classList.toggle('on', want);
+      $('#sdDefSw').closest('.trow').className = 'trow ' + (want ? 'on' : 'off');
+      toast(want ? 'Self-Defense enabled' : 'Self-Defense disabled', '', want ? 'ok' : 'warn'); }
+    else toast('Self-Defense unavailable', res.detail || 'Run as admin to apply', 'bad');
+  };
+}
+
+/* App Updater (Avast-style "Update apps") */
+async function loadAppUpdater() {
+  const s = await API.apps_status();
+  const auto = !!s.enabled;
+  $('#setApps').innerHTML =
+    '<div class="trow ' + (auto ? 'on' : 'off') + '"><div class="tb"><div class="tt">Auto-update installed apps</div>' +
+    '<div class="td">Use Windows Package Manager (winget) to keep other installed apps up to date in the background.' +
+    (s.winget ? '' : ' <b>winget not found</b> — install App Installer from the Microsoft Store.') + '</div></div>' +
+    '<div class="sw ' + (auto ? 'on' : '') + '" id="appsAutoSw"></div></div>' +
+    '<div style="display:flex;gap:9px;margin:12px 0 4px">' +
+    '<button class="btn" onclick="appsCheckSelf()">Check Aegis update</button>' +
+    '<button class="btn pri" onclick="appsListUpgrades()">Scan for app updates</button></div>' +
+    '<div id="appsOut" style="margin-top:8px"></div>';
+  $('#appsAutoSw').onclick = async () => {
+    const want = !$('#appsAutoSw').classList.contains('on');
+    const r = await API.apps_set_auto(want);
+    if (r.ok) { $('#appsAutoSw').classList.toggle('on', want);
+      $('#appsAutoSw').closest('.trow').className = 'trow ' + (want ? 'on' : 'off'); }
+  };
+}
+async function appsCheckSelf() {
+  const out = $('#appsOut');
+  out.innerHTML = '<div class="mut"><span class="spin"></span> Checking for an Aegis update…</div>';
+  const r = await API.apps_self_check();
+  if (r.ok && r.available) {
+    out.innerHTML = '<div class="li"><div class="dot" style="background:var(--accent)"></div>' +
+      '<div class="body"><div class="t">Update available: v' + esc(r.latest) + '</div>' +
+      '<div class="d"><a href="' + esc(r.url) + '" target="_blank" rel="noopener">Download from GitHub</a></div></div></div>';
+  } else if (r.ok) {
+    out.innerHTML = '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
+      '<div class="body"><div class="t">Aegis is up to date (v' + esc(SETTINGS._system_aegis_ver || '2.1.0') + ')</div></div></div>';
+  } else {
+    out.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
+      '<div class="body"><div class="t">Could not reach the update server</div>' +
+      '<div class="d">' + esc(r.error || '') + '</div></div></div>';
+  }
+}
+async function appsListUpgrades() {
+  const out = $('#appsOut');
+  out.innerHTML = '<div class="mut"><span class="spin"></span> Scanning installed apps…</div>';
+  const apps = await API.apps_list();
+  if (!apps.length) {
+    out.innerHTML = '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
+      '<div class="body"><div class="t">All apps up to date</div></div></div>';
+    return;
+  }
+  out.innerHTML = '<div class="list" style="margin-top:6px">' + apps.map((a, n) =>
+    '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
+    '<div class="body"><div class="t">' + esc(a.name) + ' <span class="pill medium">' +
+    esc(a.current) + ' → ' + esc(a.available) + '</span></div></div>' +
+    '<button class="btn sm pri" data-n="' + n + '">Update</button></div>').join('') + '</div>';
+  $$('#appsOut [data-n]').forEach(b => b.onclick = async () => {
+    const a = apps[Number(b.dataset.n)];
+    b.disabled = true; b.textContent = 'Updating…';
+    const r = await API.apps_update_one(a.id);
+    toast(r.ok ? 'Updated ' + a.name : 'Update failed', '', r.ok ? 'ok' : 'bad');
+    appsListUpgrades();
+  });
+}
+
+/* Shredder default algorithm (mirrors the Shredder page) */
+async function loadShredSettings() {
+  const algos = await API.shredder_algorithms();
+  const cur = SETTINGS['shred.algorithm'] || 'random';
+  $('#setShred').innerHTML =
+    '<label class="fl">Default shred algorithm</label>' +
+    '<select id="setShredAlgo" class="field" style="max-width:320px">' +
+    algos.map(a => '<option value="' + a.id + '"' + (a.id === cur ? ' selected' : '') + '>' +
+      a.name + ' (' + a.passes + ' pass' + (a.passes > 1 ? 'es' : '') + ')</option>').join('') +
+    '</select>';
+  $('#setShredAlgo').onchange = async () => {
+    await API.set_setting('shred.algorithm', $('#setShredAlgo').value);
+    toast('Default shred algorithm set', $('#setShredAlgo').value, 'ok');
+  };
 }
 
 async function loadStartup() {

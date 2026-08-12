@@ -309,7 +309,7 @@ async function runBruteScan() {
   }
 }
 
-/* 6 — Firewall Control */
+/* 6 — Firewall Control (profiles + app policy) */
 async function loadFirewall() {
   try {
     const r = await API.firewall_status();
@@ -320,6 +320,49 @@ async function loadFirewall() {
     if (onBtn) onBtn.disabled = on;
     if (offBtn) offBtn.disabled = !on;
   } catch (e) {}
+
+  // profiles
+  try {
+    const p = await API.firewall_profiles();
+    const rows = [['private', 'Private Network (Trusted)', 'Allows devices like printers and file shares to see your PC.'],
+                  ['public', 'Public Network (Untrusted)', 'Hides your PC from everyone else on the Wi-Fi.'],
+                  ['domain', 'Domain Network', 'Corporate/domain-joined network.']];
+    $('#fwProfiles').innerHTML = rows.map(([k, t, d]) => {
+      const on = !!p[k];
+      return '<div class="trow ' + (on ? 'on' : 'off') + '"><div class="tb"><div class="tt">' + t +
+        '</div><div class="td">' + d + '</div></div>' +
+        '<div class="sw ' + (on ? 'on' : '') + '" data-p="' + k + '"></div></div>';
+    }).join('');
+    $$('#fwProfiles .sw').forEach(sw => sw.onclick = async () => {
+      const k = sw.dataset.p, want = !sw.classList.contains('on');
+      sw.classList.toggle('on');
+      sw.closest('.trow').className = 'trow ' + (want ? 'on' : 'off');
+      await API.firewall_set_profile(k, want);
+      toast((want ? 'Enabled ' : 'Disabled ') + k + ' profile', '', want ? 'ok' : 'warn');
+    });
+  } catch (e) {}
+
+  // app policy
+  try {
+    const ap = await API.firewall_app_policy();
+    const policy = ap.policy || 'smart';
+    const opts = [['smart', 'Smart'], ['strict', 'Strict'], ['block', 'Block'], ['ask', 'Ask']];
+    const desc = { smart: 'Avast decides if a new app is safe without asking.',
+                   strict: 'You must approve every new app that wants internet.',
+                   block: 'Auto-blocks any new app not on the allow-list.',
+                   ask: 'Prompts for every connection (behaves like Strict here).' };
+    $('#fwAppPolicy').innerHTML =
+      '<div class="mut" style="font-size:12.5px;margin-bottom:10px">' + desc[policy] + '</div>' +
+      '<div class="seg" id="fwPolicySeg">' +
+      opts.map(o => '<button data-p="' + o[0] + '" class="' + (o[0] === policy ? 'on' : '') + '">' + o[1] + '</button>').join('') +
+      '</div>';
+    $$('#fwPolicySeg button').forEach(b => b.onclick = async () => {
+      const pol = b.dataset.p;
+      const r = await API.firewall_app_policy_set(pol);
+      if (r.ok) { toast('App policy: ' + pol, '', 'ok'); loadFirewall(); }
+      else toast('Could not set policy', r.error || '', 'bad');
+    });
+  } catch (e) {}
 }
 async function setFirewall(on) {
   await API.firewall_set(on);
@@ -327,7 +370,9 @@ async function setFirewall(on) {
   loadFirewall(); refreshDash();
 }
 
-/* 7 — Webcam & Mic Guard */
+/* 7 — Webcam & Mic Guard (modes) */
+const CAM_MODES = [['smart', 'Smart'], ['strict', 'Strict'], ['nomercy', 'No Mercy']];
+const MIC_MODES = [['smart', 'Smart'], ['strict', 'Strict'], ['nomercy', 'No Mercy']];
 async function loadPrivacy() {
   try {
     const r = await API.privacy_status();
@@ -336,9 +381,71 @@ async function loadPrivacy() {
     if (cam) { cam.textContent = fmt(r.webcam_consent); cam.style.color = r.webcam_consent === 'Deny' ? 'var(--ok)' : 'var(--warn)'; }
     if (mic) { mic.textContent = fmt(r.mic_consent); mic.style.color = r.mic_consent === 'Deny' ? 'var(--ok)' : 'var(--warn)'; }
   } catch (e) {}
+
+  try {
+    const c = await API.webcam_status();
+    const camDesc = { smart: 'Trusted apps (Zoom/Teams) can use the camera automatically.',
+                      strict: 'You must approve every camera activation.',
+                      nomercy: 'Disables the camera device driver for all apps.' };
+    $('#camMode').innerHTML = '<div class="mut" style="font-size:12.5px;margin-bottom:10px">' +
+      camDesc[c.mode] + '</div><div class="seg" id="camSeg">' +
+      CAM_MODES.map(o => '<button data-m="' + o[0] + '" class="' + (o[0] === c.mode ? 'on' : '') + '">' + o[1] + '</button>').join('') + '</div>';
+    $$('#camSeg button').forEach(b => b.onclick = async () => {
+      const r = await API.webcam_set(b.dataset.m);
+      if (r.ok) toast('Webcam mode: ' + b.dataset.m, '', 'ok'); else toast('Webcam change failed', r.error || '', 'bad');
+      loadPrivacy();
+    });
+  } catch (e) {}
+  try {
+    const m = await API.mic_status();
+    const micDesc = { smart: 'Trusted apps can use the mic automatically.',
+                      strict: 'You must approve every mic activation.',
+                      nomercy: 'Denies mic access via the OS consent posture.' };
+    $('#micMode').innerHTML = '<div class="mut" style="font-size:12.5px;margin-bottom:10px">' +
+      micDesc[m.mode] + '</div><div class="seg" id="micSeg">' +
+      MIC_MODES.map(o => '<button data-m="' + o[0] + '" class="' + (o[0] === m.mode ? 'on' : '') + '">' + o[1] + '</button>').join('') + '</div>';
+    $$('#micSeg button').forEach(b => b.onclick = async () => {
+      const r = await API.mic_set(b.dataset.m);
+      if (r.ok) toast('Microphone mode: ' + b.dataset.m, '', 'ok'); else toast('Mic change failed', r.error || '', 'bad');
+      loadPrivacy();
+    });
+  } catch (e) {}
 }
 
-/* 8 — Secure VPN (honest status surface) */
+/* 8 — Sensitive Data Shield */
+async function loadSensitive() {
+  try {
+    const s = await API.sensitive_data_status();
+    const sw = $('#sdSw');
+    if (sw) sw.classList.toggle('on', !!s.deny_others);
+    $('#sdList').innerHTML = (s.folders && s.folders.length) ? s.folders.map((p, n) =>
+      '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
+      '<div class="body"><div class="p">' + esc(p) + '</div></div>' +
+      '<button class="btn sm dgr" data-n="' + n + '">Remove</button></div>').join('')
+      : '<div class="trow"><div class="tb"><div class="td mut">No folders protected.</div></div></div>';
+    $$('#sdList [data-n]').forEach(b => b.onclick = async () => {
+      const list = (await API.sensitive_data_status()).folders;
+      await API.sensitive_data_remove(list[Number(b.dataset.n)]);
+      toast('Folder unprotected', '', 'warn'); loadSensitive();
+    });
+  } catch (e) {}
+}
+async function sdToggle() {
+  const sw = $('#sdSw');
+  const want = !sw.classList.contains('on');
+  const r = await API.sensitive_data_set(want);
+  sw.classList.toggle('on', want);
+  toast(want ? 'Other users blocked' : 'Other users allowed', '', want ? 'ok' : 'warn');
+}
+async function sdAdd() {
+  const f = await API.pick_folder();
+  if (!f || !f.length) return;
+  await API.sensitive_data_add(f[0]);
+  toast('Folder protected', f[0], 'ok');
+  loadSensitive();
+}
+
+/* 9 — Secure VPN (honest status surface) */
 async function loadVpn() {
   try {
     const r = await API.vpn_status();
@@ -359,16 +466,31 @@ async function loadVpn() {
   } catch (e) {}
 }
 
-/* 9 — File Shredder */
+/* 10 — File Shredder (multi-pass algorithm) */
+async function loadShredderAlgos() {
+  try {
+    const algos = await API.shredder_algorithms();
+    const cur = (await API.get_settings())['shred.algorithm'] || 'random';
+    $('#shredAlgo').innerHTML = algos.map(a =>
+      '<option value="' + a.id + '"' + (a.id === cur ? ' selected' : '') + '>' +
+      a.name + ' (' + a.passes + ' pass' + (a.passes > 1 ? 'es' : '') + ')</option>').join('');
+    $('#shredAlgo').onchange = async () => {
+      await API.set_setting('shred.algorithm', $('#shredAlgo').value);
+      toast('Default shred algorithm set', $('#shredAlgo').value, 'ok');
+    };
+  } catch (e) {}
+}
 async function shredPick() {
   const files = await API.pick_files();
   if (!files || !files.length) return;
+  const algo = (await API.get_settings())['shred.algorithm'] || 'random';
   const out = $('#shredOut');
   for (const f of files) {
-    const r = await API.shred_file(f);
+    const r = await API.shred_file(f, algo);
     if (out) out.innerHTML = '<div class="li"><div class="dot" style="background:' +
       (r.ok ? 'var(--ok)' : 'var(--bad)') + '"></div><div class="body"><div class="t">' +
-      esc(base(f)) + '</div><div class="d">' + (r.ok ? 'Securely wiped (' + bytes(r.bytes) + ')' : esc(r.error || 'failed')) +
+      esc(base(f)) + '</div><div class="d">' + (r.ok ? 'Securely wiped (' + bytes(r.bytes) +
+      ', ' + (r.passes || 1) + ' pass' + ((r.passes || 1) > 1 ? 'es' : '') + ')' : esc(r.error || 'failed')) +
       '</div></div></div>' + (out.innerHTML || '');
   }
   toast('Shred complete', files.length + ' file(s) processed', 'ok');

@@ -306,18 +306,21 @@ class ShieldManager:
 
     # -------------------------------------------------------- file shield
     def _queue_scan(self, path: str):
+        # Respect the File Shield "scan on open/write" sub-setting: if the user
+        # turned it off, we still honour the canary/ransomware burst detection
+        # but skip the real-time file scan of this path.
+        if not store.get("shield.file.openwrite", True):
+            try:
+                p = os.path.normcase(path)
+                for folder in self._ransom_folders:
+                    if p.startswith(os.path.normcase(folder)):
+                        self._mod_window.append(time.time())
+                        break
+            except Exception:
+                pass
+            return
         with self._q_lock:
             self._scan_q.append(path)
-        # Ransomware burst detection — use the cached folder list so the
-        # watchdog emitter thread never blocks on SQLite.
-        try:
-            p = os.path.normcase(path)
-            for folder in self._ransom_folders:
-                if p.startswith(os.path.normcase(folder)):
-                    self._mod_window.append(time.time())
-                    break
-        except Exception:
-            pass
 
     def _scan_worker(self):
         while not self._stop.is_set():
@@ -489,6 +492,28 @@ class ShieldManager:
             "behavior": bool(store.get("shield.behavior", True)) and self.running,
             "ransomware": bool(store.get("shield.ransomware", True)) and self.running,
             "email": bool(store.get("shield.email", False)),
+            # ── per-shield sub-settings (Avast-style) ──
+            "file_cfg": {
+                "scan_autorun": bool(store.get("shield.file.autorun", True)),
+                "scan_on_execute": bool(store.get("shield.file.onexecute", True)),
+                "scan_on_open_write": bool(store.get("shield.file.openwrite", True)),
+            },
+            "behavior_cfg": {
+                "sensitivity": store.get("shield.behavior.sensitivity", "balanced"),
+            },
+            "web_cfg": {
+                "https": bool(store.get("shield.web.https", True)),
+                "script": bool(store.get("shield.web.script", True)),
+                "quic": bool(store.get("shield.web.quic", True)),
+            },
+            "email_cfg": {
+                "inbound": bool(store.get("shield.email.inbound", False)),
+                "outbound": bool(store.get("shield.email.outbound", False)),
+                "add_signature": bool(store.get("shield.email.signature", False)),
+            },
+            "ransomware_cfg": {
+                "mode": store.get("shield.ransomware.mode", "smart"),
+            },
             "uptime": int(up),
             "canaries": len(self._canaries),
             **self.stats,

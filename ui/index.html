@@ -379,6 +379,29 @@
   .mut { color: var(--ink-soft); }
   .bar { height: 4px; background: var(--rule); margin-top: 8px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+
+  /* ── Core Shields expandable rows ── */
+  .shieldRow { border-bottom: 1px solid var(--rule); }
+  .shieldRow:last-child { border-bottom: none; }
+  .shieldRow .head { cursor: pointer; transition: background .15s; }
+  .shieldRow .head:hover { background: var(--paper-3); }
+  .shieldRow .chev { width: 16px; height: 16px; stroke-width: 2; margin-left: 6px;
+                     color: var(--ink-soft); transition: transform .2s; flex: 0 0 auto; }
+  .shieldRow.exp .chev { transform: rotate(180deg); }
+  .shieldRow .shcfg { display: none; padding: 4px 0 10px 36px; background: var(--paper-3); }
+  .shieldRow.exp .shcfg { display: block; }
+  .shieldRow .shcfg .trow { padding: 10px 16px; border-bottom: 1px solid var(--rule); }
+  .shieldRow .shcfg .trow:last-child { border-bottom: none; }
+  .shieldRow .sw.main, .shieldRow .shcfg .sw { flex: 0 0 auto; }
+
+  /* segmented button group (firewall app policy / webcam modes) */
+  .seg { display: inline-flex; border: 1px solid var(--rule-strong); }
+  .seg button { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .06em;
+                text-transform: uppercase; padding: 7px 12px; background: var(--paper); color: var(--ink-soft);
+                border: none; border-right: 1px solid var(--rule-strong); cursor: pointer; }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg button:hover:not(.on) { background: var(--paper-2); color: var(--ink); }
 </style>
 <link rel="stylesheet" href="bridge.css">
 </head>
@@ -445,6 +468,9 @@
     <div class="navitem" data-p="privacy">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 8h3l2-3h6l2 3h3v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg>
       Webcam &amp; Mic Guard</div>
+    <div class="navitem" data-p="sensitive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16" stroke-linecap="round"/><path d="M12 13l2 2 3-3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Sensitive Data Shield</div>
     <div class="navitem" data-p="vpn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 12a9 9 0 0 1-15 6.7L3 16" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>
       Secure VPN</div>
@@ -579,6 +605,7 @@
       </div>
 
       <div class="panel" id="shieldList"></div>
+      <p class="mut" style="font-size:12.5px;margin:10px 0 0">Click a shield to expand its individual settings — each can be tuned without turning the whole engine off.</p>
       <div class="grid g3" style="margin-top:20px">
         <div class="card stat"><div class="v" id="shFiles">0</div><div class="k">Files inspected</div></div>
         <div class="card stat"><div class="v" id="shProcs">0</div><div class="k">Processes analysed</div></div>
@@ -734,8 +761,17 @@
           </div>
         </div>
       </div>
+
+      <h2>Firewall Profiles</h2>
+      <p class="mut" style="font-size:12.5px;margin-bottom:12px">Avast's Private/Public split. Aegis maps these to the Windows per-profile state.</p>
+      <div class="panel" id="fwProfiles" style="margin-bottom:20px"></div>
+
+      <h2>App Policies (New Apps)</h2>
+      <p class="mut" style="font-size:12.5px;margin-bottom:12px">How Aegis treats a brand-new app that wants internet access.</p>
+      <div class="panel" id="fwAppPolicy" style="margin-bottom:20px"></div>
+
       <div class="note" style="font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--rule-strong);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
-        Aegis controls the OS firewall via <code>netsh</code>; it does not install its own packet filter. Keep it on for the intrusion-defense layer Avast advertises.
+        Aegis controls the OS firewall via <code>netsh</code>; it does not install its own packet filter. "Block" mode applies a real deny-outbound baseline rule; "Smart/Strict" enable outbound filtering. True per-connection prompts (Avast's "Ask") require a kernel driver, so "Ask" behaves like Strict here.
       </div>
     </section>
 
@@ -748,11 +784,46 @@
         <div class="card stat"><div class="v" id="camState">—</div><div class="k">Webcam consent</div></div>
         <div class="card stat"><div class="v" id="micState">—</div><div class="k">Microphone consent</div></div>
       </div>
+
+      <h2>Webcam Shield mode</h2>
+      <div class="panel" id="camMode" style="margin-bottom:18px"></div>
+
+      <h2>Microphone Shield mode</h2>
+      <div class="panel" id="micMode" style="margin-bottom:18px"></div>
+
       <div class="panel">
         <button class="btn pri" onclick="loadPrivacy()">Refresh privacy state</button>
       </div>
       <div class="note" style="margin-top:20px;font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
-        <b>Honest limit:</b> Aegis reads the OS consent state but cannot hard-block a device at the driver level without a kernel component. For enforced blocking, use Windows' per-app camera/mic settings — Aegis shows you the current posture at a glance.
+        <b>Honest limit:</b> <b>No Mercy</b> disables the camera device driver via <code>pnputil</code> (real, driver-level). Smart/Strict set the Windows per-app consent posture through the registry. A user-mode app cannot intercept every activation at the driver level without a kernel component — that is the one thing Avast's driver adds.
+      </div>
+    </section>
+
+    <!-- ─────────── SENSITIVE DATA SHIELD -->
+    <section class="page" id="p-sensitive">
+      <div class="eyebrow"><span class="num">15</span><span class="lab">Privacy</span><span class="rule"></span></div>
+      <h1>Sensitive Data Shield</h1>
+      <div class="sub">Like Avast's Sensitive Data Shield: stop other Windows user accounts on this PC from reading your protected private documents. Aegis applies a real deny-ACL to each folder.</div>
+      <div class="panel" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Block other users</h3>
+            <p class="mut" style="font-size:12.5px;margin:4px 0 0">Deny "Authenticated Users" read/delete on every protected folder.</p>
+          </div>
+          <div class="sw" id="sdSw" role="switch" tabindex="0" style="cursor:pointer"
+               onclick="sdToggle()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sdToggle()}"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <div><h3 style="margin:0">Protected folders</h3>
+          <p class="mut" style="font-size:12.5px;margin:4px 0 0">Add the private folders you want locked down.</p></div>
+          <button class="btn" onclick="sdAdd()">Add a folder</button>
+        </div>
+        <div id="sdList"></div>
+      </div>
+      <div class="note" style="font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--rule-strong);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
+        Implemented with <code>icacls /deny "Authenticated Users"</code> — a real filesystem ACL. Toggle off to restore the original permissions. This protects against other local accounts, not against an administrator or malware running as admin.
       </div>
     </section>
 
@@ -779,6 +850,15 @@
       <div class="eyebrow"><span class="num">17</span><span class="lab">Performance</span><span class="rule"></span></div>
       <h1>File Shredder</h1>
       <div class="sub">Avast Ultimate's file shredder — overwrites a file with random data before deleting it, so it can't be recovered from disk.</div>
+      <div class="panel" style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Secure delete algorithm</h3>
+            <p class="mut" style="font-size:12.5px;margin:4px 0 0">Choose how thoroughly files are wiped.</p>
+          </div>
+          <select id="shredAlgo" class="field" style="width:auto;padding:8px 10px"></select>
+        </div>
+      </div>
       <div class="panel" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div>
@@ -930,8 +1010,20 @@
         </select>
       </div>
 
+      <h2>General &amp; Notifications</h2>
+      <div class="panel" id="setGeneral" style="margin-bottom:20px"></div>
+
+      <h2>Self-Defense</h2>
+      <div class="panel" id="setSelfDef" style="margin-bottom:20px"></div>
+
+      <h2>App Updater</h2>
+      <div class="panel" id="setApps" style="margin-bottom:20px"></div>
+
       <h2>Protection</h2>
       <div class="panel" id="setScan" style="margin-bottom:20px"></div>
+
+      <h2>File Shredder</h2>
+      <div class="panel" id="setShred" style="margin-bottom:20px"></div>
 
       <h2>Windows Startup</h2>
       <div class="panel" style="margin-bottom:20px">

@@ -356,8 +356,127 @@ class Api:
     def privacy_status(self) -> dict:
         return tools.privacy_status()
 
-    def shred_file(self, path: str) -> dict:
-        return tools.shred_file(path)
+    def shred_file(self, path: str, algorithm: str = "random") -> dict:
+        from . import hardening
+        return hardening.shred_file(path, algorithm)
+
+    def shredder_algorithms(self) -> list[dict]:
+        from . import hardening
+        return hardening.shredder_algorithms()
+
+    # ── firewall profiles & app policy (Avast-style) ──
+    def firewall_profiles(self) -> dict:
+        from . import hardening
+        return hardening.firewall_profiles_status()
+
+    def firewall_set_profile(self, profile: str, on: bool) -> dict:
+        from . import hardening
+        return hardening.firewall_set_profile(profile, on)
+
+    def firewall_app_policy(self) -> dict:
+        from . import hardening
+        return hardening.firewall_app_policy_status()
+
+    def firewall_app_policy_set(self, policy: str) -> dict:
+        from . import hardening
+        return hardening.firewall_app_policy_set(policy)
+
+    # ── webcam / mic guard ──
+    def webcam_status(self) -> dict:
+        from . import hardening
+        return hardening.webcam_status()
+
+    def webcam_set(self, mode: str) -> dict:
+        from . import hardening
+        return hardening.webcam_set_mode(mode)
+
+    def mic_status(self) -> dict:
+        from . import hardening
+        return hardening.mic_status()
+
+    def mic_set(self, mode: str) -> dict:
+        from . import hardening
+        return hardening.mic_set_mode(mode)
+
+    # ── sensitive data shield ──
+    def sensitive_data_status(self) -> dict:
+        from . import hardening
+        return hardening.sensitive_data_status()
+
+    def sensitive_data_set(self, deny_others: bool, folders=None) -> dict:
+        from . import hardening
+        return hardening.sensitive_data_apply(deny_others, folders)
+
+    def sensitive_data_add(self, path: str) -> dict:
+        from . import hardening
+        return hardening.sensitive_data_add(path)
+
+    def sensitive_data_remove(self, path: str) -> dict:
+        from . import hardening
+        return hardening.sensitive_data_remove(path)
+
+    # ── self-defense ──
+    def self_defense_status(self) -> dict:
+        from . import hardening
+        return hardening.self_defense_status()
+
+    def self_defense_set(self, on: bool) -> dict:
+        from . import hardening
+        return hardening.self_defense_set(on)
+
+    # ── per-shield sub-settings ──
+    def shield_config_set(self, name: str, key: str, value) -> dict:
+        store.set(f"shield.{name}.{key}", value)
+        # For live-affecting settings we restart the shield manager so the new
+        # config is picked up by the running worker threads.
+        if self.shields.running:
+            self.shields.stop()
+            self.shields.start()
+        return {"ok": True, "status": self.shields.status()}
+
+    def shield_sensitivity_set(self, value: str) -> dict:
+        store.set("shield.behavior.sensitivity", value)
+        return {"ok": True}
+
+    def ransomware_mode_set(self, mode: str) -> dict:
+        store.set("shield.ransomware.mode", mode)
+        return {"ok": True}
+
+    # ── app updater (Avast-style "Update apps") ──
+    def apps_status(self) -> dict:
+        from . import appupdater
+        return appupdater.status()
+
+    def apps_list(self) -> list[dict]:
+        from . import appupdater
+        return appupdater.list_apps()
+
+    def apps_update_one(self, pid: str) -> dict:
+        from . import appupdater
+        return appupdater.update_app(pid)
+
+    def apps_update_all(self) -> dict:
+        from . import appupdater
+        return appupdater.update_all()
+
+    def apps_self_check(self) -> dict:
+        from . import appupdater
+        return appupdater.check_self_update()
+
+    def apps_set_auto(self, on: bool) -> dict:
+        from . import appupdater
+        return appupdater.set_auto_update(on)
+
+    # ── autorun scan of newly mounted removable drives (File Shield sub-setting) ──
+    def scan_autorun_drives(self) -> dict:
+        if not store.get("shield.file.autorun", True):
+            return {"ok": True, "skipped": True, "scanned": 0}
+        drives = self.scan_usb_drives()
+        scanned = 0
+        for d in drives:
+            self.start_scan("custom", [d["letter"]])
+            scanned += 1
+        return {"ok": True, "scanned": scanned, "drives": drives}
 
     def vpn_status(self) -> dict:
         return tools.vpn_status()
@@ -733,6 +852,14 @@ class Api:
                     last = store.get("intel.last_update", 0)
                     if time.time() - last > 21600 and self.updater.state != "running":
                         self.updater.update(include_rules=False)
+                # App updater: check for an Aegis self-update daily; if the user
+                # enabled auto-update of other apps, upgrade them in the background.
+                from . import appupdater
+                appupdater.maybe_self_check()
+                if store.get("apps.auto_update", False):
+                    if time.time() - store.get("apps.last_update", 0) > 86400 \
+                            and appupdater.winget_present():
+                        appupdater.update_all()
             except Exception:
                 pass
             time.sleep(45)

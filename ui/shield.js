@@ -14,6 +14,36 @@ const SHIELD_DEFS = [
     'Inspects attachments saved from mail clients before they can be opened.']
 ];
 
+/* Per-shield sub-settings, rendered inside an expandable row. */
+const SHIELD_CFG = {
+  file: [
+    ['autorun', 'Scan Auto-Run', 'Scan USB/DVD auto-start files the moment a drive is mounted.'],
+    ['onexecute', 'Scan programs when executing', 'Scan applications the moment they launch.'],
+    ['openwrite', 'Scan files when opening/writing', 'Scan a file every time it is opened or saved.']
+  ],
+  behavior: [
+    ['sensitivity', 'sensitivity', 'Behaviour sensitivity',
+      'Low raises fewer alerts; High is paranoid mode with more false positives.']
+  ],
+  web: [
+    ['https', 'HTTPS Scanning', 'Scan encrypted (HTTPS) web traffic. Turn off to fix some browser cert errors.'],
+    ['script', 'Script Scanning', 'Check JavaScript for drive-by attacks. Turn off only if it breaks a site.'],
+    ['quic', 'QUIC / HTTP3 Scanning', 'Scan Google\u2019s modern QUIC protocol.']
+  ],
+  email: [
+    ['inbound', 'Scan Inbound (POP3/IMAP)', 'Scan incoming email attachments.'],
+    ['outbound', 'Scan Outbound (SMTP)', 'Scan attachments you send.'],
+    ['signature', 'Add Signature', 'Add a \u201cScanned by Aegis\u201d footer to outgoing mail.']
+  ],
+  ransomware: [
+    ['mode', 'mode', 'Ransomware mode',
+      'Smart auto-allows trusted apps; Strict asks before any protected-folder write.']
+  ]
+};
+
+const SENS_OPTS = ['low', 'balanced', 'high'];
+const RANSOM_OPTS = ['smart', 'strict'];
+
 async function enableProtection() {
   await API.set_protection(true);
   toast('Real-time protection enabled', '', 'ok');
@@ -76,18 +106,52 @@ async function loadShields() {
   const s = await API.shield_status();
   API._running = s.running;
   API._pausedUntil = (await API.protection_paused_until()) || null;
+  const cfg = s;
+
   $('#shieldList').innerHTML = SHIELD_DEFS.map(([k, name, desc]) => {
     const on = !!s[k];
-    return '<div class="trow ' + (on ? 'on' : 'off') + '">' +
+    const sub = SHIELD_CFG[k] || [];
+    let inner = '';
+    if (sub.length) {
+      inner = '<div class="shcfg">' + sub.map(o => {
+        if (o[0] === 'sensitivity') {
+          const val = (cfg.behavior_cfg && cfg.behavior_cfg.sensitivity) || 'balanced';
+          return '<div class="trow"><div class="tb"><div class="tt">' + o[2] + '</div>' +
+            '<div class="td">' + o[3] + '</div></div>' +
+            '<select class="shsel" data-k="' + k + '" data-sub="sensitivity" style="width:130px;flex:0 0 130px">' +
+            SENS_OPTS.map(v => '<option value="' + v + '"' + (v === val ? ' selected' : '') + '>' +
+              v[0].toUpperCase() + v.slice(1) + '</option>').join('') + '</select></div>';
+        }
+        if (o[0] === 'mode') {
+          const val = (cfg.ransomware_cfg && cfg.ransomware_cfg.mode) || 'smart';
+          return '<div class="trow"><div class="tb"><div class="tt">' + o[2] + '</div>' +
+            '<div class="td">' + o[3] + '</div></div>' +
+            '<select class="shsel" data-k="' + k + '" data-sub="mode" style="width:130px;flex:0 0 130px">' +
+            RANSOM_OPTS.map(v => '<option value="' + v + '"' + (v === val ? ' selected' : '') + '>' +
+              v[0].toUpperCase() + v.slice(1) + '</option>').join('') + '</select></div>';
+        }
+        const map = ({ file: cfg.file_cfg, web: cfg.web_cfg, email: cfg.email_cfg })[k] || {};
+        const subOn = map[o[0]] !== false;
+        return '<div class="trow"><div class="tb"><div class="tt">' + o[1] + '</div>' +
+          '<div class="td">' + o[2] + '</div></div>' +
+          '<div class="sw ' + (subOn ? 'on' : '') + '" data-k="' + k + '" data-sub="' + o[0] + '"></div></div>';
+      }).join('') + '</div>';
+    }
+    return '<div class="shieldRow" data-k="' + k + '">' +
+      '<div class="trow ' + (on ? 'on' : 'off') + ' head">' +
       '<div class="ti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">' +
       (on ? '<path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/><path d="m9 12 2 2 4-4.5" stroke-linecap="round" stroke-linejoin="round"/>'
           : '<path d="M12 3 5 6v6c0 4.4 3 8.3 7 9.3 4-1 7-4.9 7-9.3V6l-7-3Z" stroke-linejoin="round"/><path d="M12 8v5M12 15.5v.5" stroke-linecap="round"/>') +
       '</svg></div><div class="tb"><div class="tt">' + esc(name) + '</div>' +
       '<div class="td">' + esc(desc) + '</div></div>' +
-      '<div class="sw ' + (on ? 'on' : '') + '" data-k="' + k + '"></div></div>';
+      '<div class="sw ' + (on ? 'on' : '') + ' main" data-k="' + k + '"></div>' +
+      (sub.length ? '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '') +
+      '</div>' + inner + '</div>';
   }).join('');
 
-  $$('#shieldList .sw').forEach(sw => sw.onclick = async () => {
+  // main shield toggles
+  $$('#shieldList .sw.main').forEach(sw => sw.onclick = async (e) => {
+    e.stopPropagation();
     const k = sw.dataset.k, turningOn = !sw.classList.contains('on');
     if (!turningOn && (k === 'file' || k === 'ransomware')) {
       modal('Turn off ' + k + ' protection?',
@@ -98,6 +162,28 @@ async function loadShields() {
       return;
     }
     applyShield(k, turningOn);
+  });
+
+  // expand/collapse on header click (not on the switch)
+  $$('#shieldList .shieldRow').forEach(row => {
+    const head = row.querySelector('.head');
+    head.onclick = () => row.classList.toggle('exp');
+  });
+
+  // sub-setting switches + selects
+  $$('#shieldList .shcfg .sw').forEach(sw => sw.onclick = async () => {
+    const k = sw.dataset.k, sub = sw.dataset.sub;
+    const turningOn = !sw.classList.contains('on');
+    sw.classList.toggle('on');
+    sw.closest('.trow').className = 'trow ' + (turningOn ? 'on' : 'off');
+    await API.shield_config_set(k, sub, turningOn);
+    toast((turningOn ? 'Enabled ' : 'Disabled ') + sub, '', turningOn ? 'ok' : 'warn');
+  });
+  $$('#shieldList .shcfg select.shsel').forEach(sel => sel.onchange = async () => {
+    const k = sel.dataset.k, sub = sel.dataset.sub, val = sel.value;
+    if (sub === 'sensitivity') await API.shield_sensitivity_set(val);
+    else if (sub === 'mode') await API.ransomware_mode_set(val);
+    toast('Updated ' + k + ' shield', sub + ' = ' + val, 'ok');
   });
 
   $('#shFiles').textContent = num(s.files_checked);
