@@ -30,4 +30,4 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_PAGES_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: wrangler pages deploy site --project-name=aegis-av --branch=main
+        run: npx wrangler pages deploy site --project-name=aegis-av --branch=master
