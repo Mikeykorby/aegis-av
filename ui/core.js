@@ -92,6 +92,7 @@ function go(p) {
   if (p === 'vpn') loadVpn();
   if (p === 'brute') runBruteScan();
   if (p === 'shred') loadShredderAlgos();   // file picker on demand
+  if (p === 'kernel') loadKernel();
 }
 $$('.navitem').forEach(n => n.onclick = () => go(n.dataset.p));
 

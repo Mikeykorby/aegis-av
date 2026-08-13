@@ -334,3 +334,54 @@ async function checkUrl() {
       : 'This host is not on the malware distribution list. That is not a guarantee of safety.') +
     '</div></div></div>';
 }
+
+/* ── kernel companion page ─────────────────────────────── */ 
+function _kernRow(label, val, cls) {
+  return '<div class="row"><span>' + esc(label) + '</span>' +
+    '<span class="v ' + cls + '">' + esc(val) + '</span></div>';
+}
+
+function _kernBadge(state) {
+  if (state === 'active') return ['ok', 'Kernel companion active'];
+  if (state === 'inactive') return ['', 'Kernel companion off — user-mode shields only'];
+  if (state === 'missing-driver') return ['bad', 'ON but driver missing'];
+  if (state === 'blocked') return ['bad', 'ON but OS will not load driver'];
+  return ['', 'Unknown'];
+}
+
+async function loadKernel() {
+  let st;
+  try { st = await API.kernel_status(); }
+  catch (e) { $('#kernState').textContent = 'Could not query kernel state.'; return; }
+
+  const [cls, label] = _kernBadge(st.state);
+  const el = $('#kernState');
+  el.className = 'kstat ' + cls;
+  el.textContent = label;
+
+  $('#kernSw').classList.toggle('on', !!st.enabled);
+  $('#kernToggleDesc').textContent = st.loadable
+    ? 'Enforce blocking and self-defense from kernel mode.'
+    : 'Turn on to remember the choice; the driver still needs the requirements below.';
+
+  const rows = [
+    _kernRow('Architecture (x64 required)', st.arch + (st.is_x64 ? '' : ' — unsupported'), st.is_x64 ? 'pass' : 'fail'),
+    _kernRow('Administrator', st.admin ? 'yes' : 'no', st.admin ? 'pass' : 'fail'),
+    _kernRow('Test Signing', st.test_signing, st.test_signing === 'on' ? 'pass' : (st.test_signing === 'off' ? 'fail' : 'unk')),
+    _kernRow('Secure Boot', st.secure_boot, st.secure_boot === 'off' ? 'pass' : (st.secure_boot === 'unknown' ? 'unk' : 'fail')),
+    _kernRow('aegis_kernel.sys present', st.driver_present ? 'yes' : 'no', st.driver_present ? 'pass' : 'fail'),
+    _kernRow('Agent present', st.agent_present ? 'yes' : 'no', st.agent_present ? 'pass' : 'unk'),
+  ];
+  $('#kernCompat').innerHTML = rows.join('');
+
+  $('#kernNote').textContent = st.detail + (st.issues && st.issues.length
+    ? '\n\nTo enable: ' + st.issues.join(' ')
+    : '');
+}
+
+async function kernToggle() {
+  const on = !$('#kernSw').classList.contains('on');
+  const r = on ? await API.kernel_enable() : await API.kernel_disable();
+  if (r && r.warning) { /* surfaced via detail on reload */ }
+  loadKernel();
+}

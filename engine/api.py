@@ -12,6 +12,7 @@ import webbrowser
 import psutil
 
 from . import store, tools, scanner
+from . import kernel_probe
 from .detect import Engine
 from .intel import Updater, _ago
 from .scanner import ScanJob
@@ -279,6 +280,19 @@ class Api:
 
     def shield_status(self) -> dict:
         return self.shields.status()
+
+    # ── kernel companion (probe + toggle) ───────────────────────
+    def kernel_compat(self) -> dict:
+        return kernel_probe.compat_probe()
+
+    def kernel_status(self) -> dict:
+        return kernel_probe.status()
+
+    def kernel_enable(self) -> dict:
+        return kernel_probe.enable()
+
+    def kernel_disable(self) -> dict:
+        return kernel_probe.disable()
 
     # ── master real-time protection (with auto re-enable) ──────────
     # When protection is paused "for a while" we stop the shield manager and

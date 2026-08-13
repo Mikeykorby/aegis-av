@@ -258,6 +258,20 @@
   h2 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 21px; letter-spacing: -.01em; color: var(--ink); margin: 26px 0 12px; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
   h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; color: var(--ink); margin-bottom: 4px; }
   .sub { font-family: 'Fraunces', Georgia, serif; font-style: italic; font-size: 15px; color: var(--ink-soft); margin-bottom: 22px; }
+  .kstat { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .5px;
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--rule); }
+  .kstat.ok { color: #2e7d32; border-color: #2e7d3233; background: #2e7d320d; }
+  .kstat.warn { color: #b26a00; border-color: #b26a0033; background: #b26a000d; }
+  .kstat.bad { color: var(--accent); border-color: #c0402b33; background: #c0402b0d; }
+  .kcompat { display: flex; flex-direction: column; gap: 7px; margin: 4px 0 16px; }
+  .kcompat .row { display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 14px; border: 1px solid var(--rule); border-radius: 7px; font-size: 13px; }
+  .kcompat .row .v { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .kcompat .row .v.pass { color: #2e7d32; }
+  .kcompat .row .v.fail { color: var(--accent); }
+  .kcompat .row .v.unk { color: #888; }
+  .knote { font-size: 13px; color: var(--ink-soft); line-height: 1.5; padding: 12px 14px;
+    border-left: 3px solid var(--rule-strong); background: var(--paper-3); border-radius: 0 7px 7px 0; }
 
   /* Eyebrows */
   .eyebrow { display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 10px; }
@@ -440,6 +454,9 @@
     <div class="navitem" data-p="ransomware">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Ransomware Trap</div>
+    <div class="navitem" data-p="kernel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3 4 6v6c0 5 3.4 9.3 8 10 4.6-1 8-5 8-10V6l-8-3Z" stroke-linejoin="round"/><path d="M9 12h6M12 9v6" stroke-linecap="round"/></svg>
+      Kernel</div>
     <div class="navitem" data-p="chest">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a4 4 0 0 1 8 0v2M12 12v3" stroke-linecap="round"/></svg>
       Virus Chest<span class="badge hidden" id="chestBadge">0</span></div>
@@ -661,6 +678,29 @@
         <button class="btn dgr" onclick="chestEmpty()">Empty chest</button>
       </div>
       <div class="list" id="chestList"></div>
+    </section>
+
+    <!-- ─────────── KERNEL COMPANION -->
+    <section class="page" id="p-kernel">
+      <div class="eyebrow"><span class="num">07</span><span class="lab">Protection</span><span class="rule"></span></div>
+      <h1>Kernel Companion</h1>
+      <div class="sub">A separate driver pushes protection below user mode — pre-execution blocking,
+        ransomware IRP interception, and tamper-proof self-defense. Built in the
+        <code>aegis-kernel</code> repo; this toggle discovers whether it can run here and turns it on/off.</div>
+
+      <div class="kstat" id="kernState">Checking…</div>
+
+      <div class="trow" id="kernToggleRow">
+        <div class="tb">
+          <div class="tt">Kernel protection</div>
+          <div class="td" id="kernToggleDesc">Enforce blocking and self-defense from kernel mode.</div>
+        </div>
+        <div class="sw" id="kernSw" onclick="kernToggle()"></div>
+      </div>
+
+      <div class="kcompat" id="kernCompat"></div>
+
+      <div class="knote" id="kernNote"></div>
     </section>
 
     <!-- ─────────── WIFI -->
