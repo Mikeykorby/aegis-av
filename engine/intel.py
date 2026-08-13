@@ -36,6 +36,10 @@ HASH_FEEDS = [
 URL_FEEDS = [
     ("urlhaus.txt", "https://urlhaus.abuse.ch/downloads/text_online/",
      "URLhaus malicious URL feed"),
+    # OpenPhish free feed: phishing URLs, keyless, plain-text one-URL-per-line.
+    # (Covers the PhishTank-style phishing-URL gap without a registered key.)
+    ("openphish.txt", "https://openphish.com/feed.txt",
+     "OpenPhish phishing URL feed"),
 ]
 # IP blocklists -> engine.ip_set (C2 / attack sources / hijacked netblocks)
 IP_FEEDS = [
@@ -93,13 +97,19 @@ def _parse_ips(path: str, out: set[str]) -> None:
         pass
 
 
-def _parse_threatfox_domains(path: str, out: set[str]) -> None:
-    """ThreatFox recent export is JSON keyed by id; pull every domain IOC."""
+def _parse_threatfox_iocs(path: str, out: set[str]) -> None:
+    """ThreatFox recent export is JSON; pull every URL and domain IOC so the
+    Web Shield can block both C2 domains and full phishing/payload URLs."""
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as fh:
             data = fh.read()
         for m in _DOMAIN_RE.finditer(data):
             out.add(m.group(1).lower())
+        for m in re.finditer(r"\"ioc_value\":\s*\"(https?://[^\"<>\\s]+)\"", data):
+            u = m.group(1).lower()
+            if u.endswith("/"):
+                u = u[:-1]
+            out.add(u)
     except Exception:
         pass
 

@@ -269,12 +269,13 @@ class Engine:
                         self.url_hosts.add(m.group(1).lower())
         except Exception:
             pass
-        # ThreatFox recent export carries fresh malware C2 / payload domains.
+        # ThreatFox recent export carries fresh malware C2 / payload domains
+        # and URLs; parse both so the Web Shield blocks them.
         tf = os.path.join(self.data_dir, "threatfox_domains.txt")
         if os.path.exists(tf):
             try:
-                from .intel import _parse_threatfox_domains
-                _parse_threatfox_domains(tf, self.url_hosts)
+                from .intel import _parse_threatfox_iocs
+                _parse_threatfox_iocs(tf, self.url_hosts)
             except Exception:
                 pass
 
@@ -317,7 +318,15 @@ class Engine:
     # ---------------------------------------------------------- main entry
     def scan_file(self, path: str, deep: bool = False,
                   pup: bool = True, max_mb: int = 64) -> Verdict:
-        if os.path.splitext(path)[1].lower() in (".zip", ".apk", ".jar", ".docx",
+        # Never scan Aegis' own Virus Chest files — they are XOR-obfuscated
+        # (high entropy by design) and re-detecting them would loop them back
+        # into the chest. Skip by extension and by location.
+        _ext = os.path.splitext(path)[1].lower()
+        if _ext in (".aegis", ".aegls", ".meta") or store.CHEST_DIR.lower() in path.lower():
+            v = Verdict(path=path)
+            v.clean = True
+            return v
+        if _ext in (".zip", ".apk", ".jar", ".docx",
                                                   ".xlsx", ".pptx", ".ods", ".odt"):
             return self._scan_container(path, deep=deep, pup=pup, max_mb=max_mb)
         return self._scan_plain(path, deep=deep, pup=pup, max_mb=max_mb)
@@ -409,19 +418,24 @@ class Engine:
         dets: list[Detection] = []
         dets += self._layer_signature(path, v, head)
         dets += self._layer_filename(path)
-        # Whole-file entropy: a uniformly random (packed/encrypted) file with no
-        # other tell-tale is still suspicious — catches packers that evade the
-        # per-section check or strip the section table.
-        try:
-            full = head
-            with open(path, "rb") as fh:
-                full = fh.read(4 * 1024 * 1024)
-            fe = entropy(full)
-            if fe > 7.6:
-                dets.append(Detection("Packed:Win32/HighEntropy", "medium", "pe",
-                                     f"Whole-file entropy {fe:.2f} (packed/encrypted)", 3))
-        except OSError:
-            pass
+        # Whole-file entropy is a *weak* heuristic: high entropy is normal for
+        # legitimately compressed/encrypted files (installers, zips, media, and
+        # Aegis' own XOR'd Virus Chest files). Only treat it as a packer tell
+        # when the file is actually a PE/executable AND heuristics aren't in
+        # relaxed mode — otherwise it floods the log with false positives.
+        ext = os.path.splitext(path)[1].lower()
+        is_aegis_own = ext in (".aegis", ".aegls") or store.CHEST_DIR.lower() in path.lower()
+        if (not is_aegis_own and ext in EXECUTABLE_EXT
+                and store.get("scan.heuristics", "balanced") != "relaxed"):
+            try:
+                with open(path, "rb") as fh:
+                    full = fh.read(4 * 1024 * 1024)
+                fe = entropy(full)
+                if fe > 7.85:
+                    dets.append(Detection("Packed:Win32/HighEntropy", "medium", "pe",
+                                         f"Whole-file entropy {fe:.2f} (packed/encrypted)", 3))
+            except OSError:
+                pass
         if head[:2] == b"MZ":
             v.signature = trust.verify(path)["status"]
             dets += self._layer_pe(path, head, v.size)
