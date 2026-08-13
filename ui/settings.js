@@ -121,7 +121,6 @@ async function loadSettings() {
     '<dt>Intelligence</dt><dd>abuse.ch MalwareBazaar · URLhaus · YARA Forge</dd>';
 
   await loadStartup();
-  await loadAppUpdater();
   await loadSelfDefense();
   await loadGeneral();
   await loadShredSettings();
@@ -182,28 +181,27 @@ async function loadSelfDefense() {
   };
 }
 
-/* App Updater (Avast-style "Update apps") */
-async function loadAppUpdater() {
+/* App Updater — now a dedicated sidebar page (App Updates) */
+async function loadApps() {
   const s = await API.apps_status();
   const auto = !!s.enabled;
-  $('#setApps').innerHTML =
-    '<div class="trow ' + (auto ? 'on' : 'off') + '"><div class="tb"><div class="tt">Auto-update installed apps</div>' +
-    '<div class="td">Use Windows Package Manager (winget) to keep other installed apps up to date in the background.' +
-    (s.winget ? '' : ' <b>winget not found</b> — install App Installer from the Microsoft Store.') + '</div></div>' +
-    '<div class="sw ' + (auto ? 'on' : '') + '" id="appsAutoSw"></div></div>' +
-    '<div style="display:flex;gap:9px;margin:12px 0 4px">' +
-    '<button class="btn" onclick="appsCheckSelf()">Check Aegis update</button>' +
-    '<button class="btn pri" onclick="appsListUpgrades()">Scan for app updates</button></div>' +
-    '<div id="appsOut" style="margin-top:8px"></div>';
-  $('#appsAutoSw').onclick = async () => {
-    const want = !$('#appsAutoSw').classList.contains('on');
-    const r = await API.apps_set_auto(want);
-    if (r.ok) { $('#appsAutoSw').classList.toggle('on', want);
-      $('#appsAutoSw').closest('.trow').className = 'trow ' + (want ? 'on' : 'off'); }
-  };
+  const sw = $('#appsAutoSw');
+  if (sw) sw.classList.toggle('on', auto);
+  const note = $('#appsAutoNote');
+  if (note) note.textContent = s.winget
+    ? 'Use winget to keep other apps patched in the background.'
+    : 'winget not found — install App Installer from the Microsoft Store to enable app updates.';
+}
+async function appsToggleAuto() {
+  const sw = $('#appsAutoSw');
+  const want = !sw.classList.contains('on');
+  const r = await API.apps_set_auto(want);
+  if (r.ok) { sw.classList.toggle('on', want); toast(want ? 'App auto-update on' : 'App auto-update off', '', want ? 'ok' : 'warn'); }
+  else toast('Could not change setting', r.error || '', 'bad');
 }
 async function appsCheckSelf() {
   const out = $('#appsOut');
+  if (!out) return;
   out.innerHTML = '<div class="mut"><span class="spin"></span> Checking for an Aegis update…</div>';
   const r = await API.apps_self_check();
   if (r.ok && r.available) {
@@ -212,7 +210,7 @@ async function appsCheckSelf() {
       '<div class="d"><a href="' + esc(r.url) + '" target="_blank" rel="noopener">Download from GitHub</a></div></div></div>';
   } else if (r.ok) {
     out.innerHTML = '<div class="li"><div class="dot" style="background:var(--ok)"></div>' +
-      '<div class="body"><div class="t">Aegis is up to date (v' + esc(SETTINGS._system_aegis_ver || '2.1.0') + ')</div></div></div>';
+      '<div class="body"><div class="t">Aegis is up to date (v' + esc(SETTINGS._system_aegis_ver || '2.2.0') + ')</div></div></div>';
   } else {
     out.innerHTML = '<div class="li"><div class="dot" style="background:var(--warn)"></div>' +
       '<div class="body"><div class="t">Could not reach the update server</div>' +
@@ -221,6 +219,7 @@ async function appsCheckSelf() {
 }
 async function appsListUpgrades() {
   const out = $('#appsOut');
+  if (!out) return;
   out.innerHTML = '<div class="mut"><span class="spin"></span> Scanning installed apps…</div>';
   const apps = await API.apps_list();
   if (!apps.length) {

@@ -379,7 +379,12 @@
   }
   #foot .flogo { width: 14px; height: 14px; }
   #foot .fname { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
-  #foot .fsub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); }
+  #errBar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+    background: var(--accent); color: #fff; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; padding: 6px 14px; cursor: pointer;
+  }
+  #errBar:hover { opacity: 0.92; }
 
   /* Modals */
   #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
@@ -421,7 +426,9 @@
 </head>
 <body>
 
-<!-- ════════════════════════════════════════ Titlebar (Editorial Lockup) -->
+<div id="errBar" class="hidden"></div>
+
+<!-- ══════════════════════════════════════ Titlebar (Editorial Lockup) -->
 <div id="titlebar" class="pywebview-drag-region">
   <div class="brand">
     <img src="aegis.svg" class="logo" alt="Aegis" draggable="false">
@@ -488,9 +495,9 @@
     <div class="navitem" data-p="sensitive">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16" stroke-linecap="round"/><path d="M12 13l2 2 3-3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Sensitive Data Shield</div>
-    <div class="navitem" data-p="vpn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 12a9 9 0 0 1-15 6.7L3 16" stroke-linecap="round"/><circle cx="12" cy="12" r="3"/></svg>
-      Secure VPN</div>
+    <div class="navitem" data-p="apps">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v5h-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      App Updates<span class="badge hidden" id="appsBadge">0</span></div>
 
     <div class="navgroup">Performance &amp; Hardware</div>
     <div class="navitem" data-p="usb">
@@ -867,22 +874,26 @@
       </div>
     </section>
 
-    <!-- ─────────── SECURE VPN -->
-    <section class="page" id="p-vpn">
+    <!-- ─────────── APP UPDATES --> 
+    <section class="page" id="p-apps">
       <div class="eyebrow"><span class="num">16</span><span class="lab">Privacy</span><span class="rule"></span></div>
-      <h1>Secure VPN</h1>
-      <div class="sub">The premium privacy extra — an encrypted tunnel that hides your traffic from your ISP and local network. Aegis shows the status of your OS VPN connection.</div>
-      <div class="hero ok" id="vpnHero" style="margin-bottom:20px">
-        <div class="shield"><svg viewBox="0 0 100 100" fill="none"><path d="M50 12a30 30 0 0 1 30 30" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M20 42a30 30 0 0 0 30 30" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="42" r="6" fill="currentColor"/></svg></div>
-        <div class="txt">
-          <div class="kick" id="vpnKick">Privacy extra</div>
-          <div class="st" id="vpnTitle">VPN status</div>
-          <div class="ds" id="vpnDesc">Checking your system VPN…</div>
+      <h1>App Updates</h1>
+      <div class="sub">Like Avast's "Update apps" — keep the programs on this PC current using Windows Package Manager (winget), and check Aegis itself for a new version.</div>
+      <div class="panel" style="margin-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin:0">Auto-update installed apps</h3>
+            <p class="mut" id="appsAutoNote" style="font-size:12.5px;margin:4px 0 0">Use winget to keep other apps patched in the background.</p>
+          </div>
+          <div class="sw" id="appsAutoSw" role="switch" tabindex="0" style="cursor:pointer"
+               onclick="appsToggleAuto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();appsToggleAuto()}"></div>
         </div>
       </div>
-      <div class="note" style="font-size:12.5px;line-height:1.5;color:var(--ink-soft);border-left:3px solid var(--warn);padding:10px 14px;background:var(--paper-2);border-radius:0 8px 8px 0">
-        <b>Transparency:</b> Aegis does not run its own VPN servers (no cloud backend), so this panel reflects your Windows VPN profile rather than providing a live tunnel. Connect through your provider (e.g. the VPN you already use) and Aegis will surface its state here. This is the same honest approach Avast takes — it just resells a third-party tunnel.
+      <div style="display:flex;gap:9px;margin-bottom:14px">
+        <button class="btn" onclick="appsCheckSelf()">Check Aegis update</button>
+        <button class="btn pri" onclick="appsListUpgrades()">Scan for app updates</button>
       </div>
+      <div id="appsOut"></div>
     </section>
 
     <!-- ─────────── FILE SHREDDER -->
@@ -1056,9 +1067,6 @@
       <h2>Self-Defense</h2>
       <div class="panel" id="setSelfDef" style="margin-bottom:20px"></div>
 
-      <h2>App Updater</h2>
-      <div class="panel" id="setApps" style="margin-bottom:20px"></div>
-
       <h2>Protection</h2>
       <div class="panel" id="setScan" style="margin-bottom:20px"></div>
 
@@ -1103,7 +1111,10 @@
 <footer id="foot">
   <img src="aegis.svg" class="flogo" alt="Aegis" draggable="false">
   <div class="fname">Aegis Security</div>
-  <div class="fsub">Real-time Hy3 Editorial Protection Engine</div>
+  <div class="fsub" id="footStatus">Initializing…</div>
+  <div class="fspacer"></div>
+  <div class="fstat"><span class="dot ok" id="footDot"></span><span id="footProtect">—</span></div>
+  <div class="fstat" id="footDefs">— defs</div>
 </footer>
 
 <div id="modal"><div class="mbox">

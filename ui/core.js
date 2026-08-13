@@ -89,6 +89,7 @@ function go(p) {
   if (p === 'firewall') loadFirewall();
   if (p === 'privacy') loadPrivacy();
   if (p === 'sensitive') loadSensitive();
+  if (p === 'apps') loadApps();
   if (p === 'vpn') loadVpn();
   if (p === 'brute') runBruteScan();
   if (p === 'shred') loadShredderAlgos();   // file picker on demand
@@ -216,6 +217,22 @@ window.addEventListener('pywebviewready', async () => {
   setInterval(pollEvents, 900);
   setInterval(() => { if (CUR === 'home') refreshDash(); }, 6000);
   setInterval(() => { if (CUR === 'shields') loadShields(); }, 3000);
+});
+
+/* Surface any uncaught JS error as a visible red banner so a blank page is
+   never silent — the user can report exactly what failed. */
+window.addEventListener('error', (e) => {
+  const b = document.getElementById('errBar');
+  if (!b) return;
+  b.classList.remove('hidden');
+  b.textContent = 'UI error: ' + (e.message || e.error || 'unknown') +
+    (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const b = document.getElementById('errBar');
+  if (!b) return;
+  b.classList.remove('hidden');
+  b.textContent = 'UI error (async): ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
 });
 
 /* ══ Theme persistence (Hy3 system-aware light/dark) ══════ */

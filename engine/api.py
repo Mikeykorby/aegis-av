@@ -603,6 +603,24 @@ class Api:
             "status": "ARMED" if deployed else "DISARMED",
         }
 
+    def arm_canary_traps(self) -> dict:
+        """Deploy ransomware canary honeyfiles into the watched folders on demand.
+
+        The ShieldManager plants these at startup, but this lets the UI (re)arm
+        them even if shields were started without them, or after they were
+        deleted by an over-eager cleaner."""
+        try:
+            plant = getattr(self.shields, "_plant_canaries", None)
+            if callable(plant):
+                plant()
+            else:
+                # Fallback: deploy directly so the UI always has a path.
+                from . import shields as _sh
+                _sh.ShieldManager._plant_canaries(self.shields)
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+        return self.verify_canary_traps()
+
     def audit_network_ports(self) -> list[dict]:
         """List live listening TCP/UDP sockets with their owning service."""
         ports = []
@@ -771,13 +789,15 @@ class Api:
         return {"ok": True}
 
     def minimize(self) -> dict:
-        # Closing/minimizing the window only hides it to the system tray; the
-        # app and its real-time protection keep running. Only the tray's
-        # "Quit" actually terminates Aegis.
+        # A real minimize to the taskbar (visible), not a hide-to-tray.
+        if self.window:
+            try:
+                self.window.minimize()
+                return {"ok": True}
+            except Exception:
+                pass
         if self._on_minimize:
             self._on_minimize()
-        elif self.window:
-            self.window.minimize()
         return {"ok": True}
 
     def close(self) -> dict:
@@ -843,13 +863,22 @@ class Api:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
-    def close(self) -> dict:
+    def quit_app(self) -> dict:
+        """Full termination (used by the tray Quit menu)."""
         try:
             self.shields.stop()
         except Exception:
             pass
+        try:
+            if self._tray:
+                self._tray.stop()
+        except Exception:
+            pass
         if self.window:
-            self.window.destroy()
+            try:
+                self.window.destroy()
+            except Exception:
+                pass
         return {"ok": True}
 
     def make_eicar(self) -> dict:
