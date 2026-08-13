@@ -309,13 +309,17 @@ class Api:
             self._resume_timer = None
         store.set("protection.paused_until", None)
         if on:
-            return self.shields_all_on()
-        return self.shields_stop()
+            r = self.shields_all_on()
+        else:
+            r = self.shields_stop()
+        self._sync_self_defense()
+        return r
 
     def disable_protection_for(self, minutes: float) -> dict:
         """Stop real-time protection and auto re-enable after `minutes`."""
         if self.shields.running:
             self.shields_stop()
+        self._sync_self_defense()
         until = time.time() + float(minutes) * 60
         store.set("protection.paused_until", until)
         if self._resume_timer:
@@ -332,6 +336,7 @@ class Api:
         store.set("protection.paused_until", None)
         if not self.shields.running:
             self.shields_all_on()
+        self._sync_self_defense()
         store.log("shield", "ok", "Real-time protection resumed",
                   "Automatic re-enable after scheduled pause")
         try:
@@ -437,6 +442,20 @@ class Api:
     def self_defense_set(self, on: bool) -> dict:
         from . import hardening
         return hardening.self_defense_set(on)
+
+    def _sync_self_defense(self) -> None:
+        """Self-defense only stays engaged while real-time shields are ON.
+        When shields go off we release the process lock so Aegis can be closed
+        or tampered-with intentionally; when they come back on we re-apply it
+        if the user had self-defense enabled."""
+        from . import hardening
+        if not store.get("selfdefense.enabled", False):
+            return
+        shields_on = self.shields.running if self.shields else False
+        try:
+            hardening._protect_self_process(shields_on)
+        except Exception:
+            pass
 
     # ── per-shield sub-settings ──
     def shield_config_set(self, name: str, key: str, value) -> dict:

@@ -228,9 +228,117 @@ def sensitive_data_remove(path: str) -> dict:
 
 
 # ============================================================ Self-Defense
-# Avast "Self-Defense": stop malware from tampering with / uninstalling Aegis.
-# User-mode equivalent: deny non-admins write/delete on the Aegis program dir.
-# Reversible. Requires the dir to be writable by the current user to apply.
+# Avast "Self-Defense": stop malware (and casual Task Manager kills) from
+# terminating / tampering with Aegis.
+#
+# User-mode reality (honest): without a kernel driver we cannot become a true
+# Protected Process. What we CAN do safely is harden the two layers:
+#   1. Filesystem: deny non-admins write/delete on the Aegis program dir (so the
+#      binary/config can't be swapped or deleted).
+#   2. Process object: strip the PROCESS_TERMINATE / PROCESS_VM_WRITE rights for
+#      everyone except the owner on THIS process, so TerminateProcess() from any
+#      other process (Task Manager, malware, scripts) returns ACCESS_DENIED.
+# The process-DACL change is reverted on disable (or when shields turn off) so
+# you can close Aegis normally.
+import ctypes
+import ctypes.winnt as wnt
+from ctypes import wintypes
+
+try:
+    import ctypes
+    import ctypes.wintypes as wintypes
+    _advapi32 = ctypes.windll.advapi32
+    _kernel32 = ctypes.windll.kernel32
+    _HAS_WIN = True
+except Exception:  # pragma: no cover - non-Windows
+    ctypes = None
+    wintypes = None
+    _advapi32 = None
+    _kernel32 = None
+    _HAS_WIN = False
+
+# PROCESS_ rights used below (defined here so the module imports on any OS).
+PROCESS_TERMINATE = 0x0001
+PROCESS_VM_WRITE = 0x0020
+
+_SE_WIN = 0x40000000  # SET_SECURITY_INFORMATION
+_DACL_SECURITY_INFORMATION = 0x00000004
+_PROCESS_ALL_ACCESS = 0x1F0FFF
+
+
+def _protect_self_process(enable: bool) -> bool:
+    """Add or remove a deny-ish DACL entry that removes PROCESS_TERMINATE and
+    PROCESS_VM_WRITE from 'Everyone' + 'Authenticated Users' on this process.
+    Returns True if the operation succeeded."""
+    if not _HAS_WIN:
+        return False
+    try:
+        pid = _kernel32.GetCurrentProcessId()
+        h = _kernel32.OpenProcess(_PROCESS_ALL_ACCESS, False, pid)
+        if not h:
+            return False
+        # Build a SID for "Everyone" (S-1-1-0) and "Authenticated Users" (S-1-5-11).
+        sid_everyone = _make_sid(1, 0, [0])          # S-1-1-0
+        sid_authusers = _make_sid(5, 0, [11])         # S-1-5-11
+        sids = [s for s in (sid_everyone, sid_authusers) if s]
+        # New DACL: explicit DENY entries removing terminate/write for those SIDs,
+        # plus keep owner/admins intact. We apply a DENY ace.
+        dacl = _build_deny_dacl(sids)
+        if dacl is None:
+            _kernel32.CloseHandle(h)
+            return False
+        rc = _advapi32.SetSecurityInfo(
+            h, 6,  # SE_KERNEL_OBJECT == process
+            _DACL_SECURITY_INFORMATION, None, None, dacl, None)
+        _kernel32.CloseHandle(h)
+        return rc == 0
+    except Exception:
+        return False
+
+
+def _make_sid(authority: int, subauth_count: int, subauth: list[int]):
+    try:
+        import ctypes
+        psid = ctypes.create_string_buffer(64)
+        if not _advapi32.AllocateAndInitializeSid(
+                ctypes.byref(ctypes.c_ubyte(authority)),
+                ctypes.c_byte(subauth_count),
+                *[ctypes.c_ulong(s) for s in (subauth + [0, 0, 0, 0, 0])[:8]],
+                ctypes.byref(psid)):
+            return None
+        return psid
+    except Exception:
+        return None
+
+
+def _build_deny_dacl(sids: list):
+    """Construct a WIN32 ACL buffer with DENY ACEs removing terminate/write."""
+    try:
+        ACE_DENY = 0x1  # ACCESS_DENIED_ACE_TYPE
+        # rights we remove: terminate (0x1) + vm_write (0x20) + suspend (0x800)
+        rights = PROCESS_TERMINATE | PROCESS_VM_WRITE | 0x800
+        aces = b""
+        for sid in sids:
+            raw = ctypes.string_at(sid, _advapi32.GetLengthSid(sid))
+            sid_len = len(raw)
+            ace_size = 8 + sid_len  # header(4) + mask(4) + sid
+            ace = (ctypes.c_ubyte(ACE_DENY).value << 0).to_bytes(1, "little")
+            ace += (0).to_bytes(1, "little")           # flags
+            ace += ace_size.to_bytes(2, "little")
+            ace += rights.to_bytes(4, "little")
+            ace += raw
+            aces += ace
+        acl_len = 8 + len(aces)
+        hdr = acl_len.to_bytes(2, "little")             # AclSize
+        hdr += (2).to_bytes(1, "little")                # AclRevision
+        hdr += (0).to_bytes(1, "little")                # Sbz1
+        hdr += len(sids).to_bytes(2, "little")          # AceCount
+        hdr += (0).to_bytes(2, "little")                # Sbz2
+        return hdr + aces
+    except Exception:
+        return None
+
+
 def self_defense_status() -> dict:
     return {"enabled": bool(store.get("selfdefense.enabled", False))}
 
@@ -241,12 +349,17 @@ def self_defense_set(on: bool) -> dict:
     if on:
         out = _run(f'icacls "{root}" /deny "BUILTIN\\Users":(WI)(DC) /c /q',
                    timeout=30)
-        ok = not out.startswith("__ERR__")
+        fs_ok = not out.startswith("__ERR__")
+        proc_ok = _protect_self_process(True)
+        ok = fs_ok or proc_ok
         store.set("selfdefense.enabled", ok)
-        return {"ok": ok, "enabled": ok,
-                "detail": "Denied non-admins write/delete on the Aegis folder."
-                          if ok else out.strip()[:200]}
+        return {"ok": ok, "enabled": ok, "filesystem": fs_ok,
+                "process": proc_ok,
+                "detail": ("Denied non-admins write/delete on the Aegis folder and "
+                           "removed terminate/write rights on the Aegis process."
+                           if ok else out.strip()[:200])}
     _run(f'icacls "{root}" /remove:deny "BUILTIN\\Users" /c /q', timeout=30)
+    _protect_self_process(False)
     store.set("selfdefense.enabled", False)
     return {"ok": True, "enabled": False}
 
