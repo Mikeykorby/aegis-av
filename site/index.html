@@ -166,8 +166,8 @@
       <h1>Four shields.<br>One <span class="em">kernel</span> companion.</h1>
       <p class="lede">Aegis is a Windows antivirus built around Avast-style core shields,
       live threat-intel feeds, and an optional kernel mini-filter that blocks malware
-      <em>before it executes</em>. It does everything Avast does — plus a built-in
-      <b>free VPN</b>, a kernel pre-execution blocker, and true tamper-proof self-defense. Free to run — no license, no phoning home.</p>
+      <em>before it executes</em>. It does everything Avast does — plus a kernel pre-execution
+      blocker and true tamper-proof self-defense. Free to run — no license, no phoning home.</p>
       <div class="cta">
         <a class="btn primary" href="https://github.com/Mikeykorby/aegis-av" target="_blank" rel="noopener">View on GitHub</a>
         <a class="btn ghost" href="#kernel">The kernel companion →</a>
@@ -223,13 +223,13 @@
           </ul>
         </div>
         <div class="card reveal">
-          <div class="tag">Free VPN</div>
-          <h3>Encrypted tunnel, no paywall</h3>
-          <p>Route traffic through a secure tunnel — included, not upsold.</p>
+          <div class="tag">VPN Status</div>
+          <h3>Your tunnel, surfaced</h3>
+          <p>Aegis does not run VPN servers — it shows the live state of your Windows VPN connection so you can confirm you're protected.</p>
           <ul>
-            <li>WireGuard-based client, no account required</li>
-            <li>Blocks trackers + unlocks region-locked feeds</li>
-            <li>On by default for the Web Shield path</li>
+            <li>Reads your OS VPN profile (no account, no backend)</li>
+            <li>Flags when you're exposed on an untrusted network</li>
+            <li>Same honest approach as commercial AVs that resell a tunnel</li>
           </ul>
         </div>
       </div>
@@ -246,7 +246,7 @@
         <tbody>
           <tr><td><b>Real-time file + behavior scanning</b></td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
           <tr><td><b>Web / mail shield</b></td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
-          <tr><td><b>Built-in VPN</b></td><td class="bad">Paid add-on</td><td class="ok">Free, included</td></tr>
+          <tr><td><b>Built-in VPN status</b></td><td class="warn">Resells third-party</td><td class="ok">Surfaces OS VPN state, no servers</td></tr>
           <tr><td><b>Kernel pre-execution block</b></td><td class="bad">No (user-mode only)</td><td class="ok">Yes (aegis-kernel)</td></tr>
           <tr><td><b>Tamper-proof self-defense</b></td><td class="warn">Partial</td><td class="ok">ObRegisterCallbacks + Protected Process</td></tr>
           <tr><td><b>Telemetry / account lock-in</b></td><td class="bad">Sells data, nags</td><td class="ok">None, no account</td></tr>

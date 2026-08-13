@@ -3,8 +3,9 @@
 A Windows antivirus I built because the free options either nag you into a paid
 tier or quietly ship your data. Aegis does the layered scanning, real-time
 shields, quarantine, and the network/health tools — and it keeps the features
-Avast puts behind Premium (built-in VPN, kernel-level blocking) instead of
-hiding them behind a paywall.
+Avast puts behind Premium (kernel-level blocking) instead of
+hiding them behind a paywall. It does not operate a VPN — it surfaces your
+existing OS VPN connection state, honestly, with no servers of its own.
 
 ## Building and running
 
@@ -43,7 +44,7 @@ binaries (it was 60% before the catalog-signature fix), ~27 files/sec.
 - **Behaviour Shield** — polls new processes against 15 command-line rules (shadow-copy deletion, LOLBin abuse, firewall/Defender disable, SYSTEM-task persistence).
 - **Web Shield** — URLhaus host lookup with parent-domain matching.
 - **Mail Shield** — attachment hashing + archive unpacking + AMSI macro scan.
-- **Free VPN** — WireGuard-based tunnel, no account, on by default for the Web Shield path.
+- **VPN status** — surfaces your OS VPN connection state (Aegis runs no VPN servers; it reports the Windows VPN profile so you can confirm you're protected).
 
 ## Kernel companion (`aegis-kernel`)
 

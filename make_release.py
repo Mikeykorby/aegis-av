@@ -1,8 +1,8 @@
 import sys, subprocess, json, os
 
 REPO = "Mikeykorby/aegis-av"
-TAG = "v2.1.0"
-REL_NAME = "Aegis Security 2.1.0"
+TAG = "v2.2.0"
+REL_NAME = "Aegis Security 2.2.0"
 ASSET = r"C:\Users\ranchel\aegis-av\dist\aegis.exe"
 
 # token from remote URL (never print it)
