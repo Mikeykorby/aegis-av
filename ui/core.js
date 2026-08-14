@@ -90,12 +90,28 @@ function go(p) {
   if (p === 'privacy') loadPrivacy();
   if (p === 'sensitive') loadSensitive();
   if (p === 'apps') loadApps();
-  if (p === 'vpn') loadVpn();
   if (p === 'brute') runBruteScan();
   if (p === 'shred') loadShredderAlgos();   // file picker on demand
   if (p === 'kernel') loadKernel();
 }
 $$('.navitem').forEach(n => n.onclick = () => go(n.dataset.p));
+
+/* ── footer live status bar ───────────────────────────── */
+async function updateFoot() {
+  const sub = $('#footStatus'), dot = $('#footDot'), prot = $('#footProtect'), defs = $('#footDefs');
+  if (!prot) return;
+  try {
+    const s = await API.status();
+    const prots = s.protections || {};
+    const active = Object.values(prots).filter(Boolean).length;
+    const total = Object.keys(prots).length || 1;
+    const ok = active === total;
+    dot.className = 'dot ' + (ok ? 'ok' : 'bad');
+    prot.textContent = active + '/' + total + ' shields';
+    defs.textContent = num(s.signatures || 0) + ' defs';
+    if (sub) sub.textContent = ok ? 'Protected' : 'Action needed';
+  } catch (e) { if (sub) sub.textContent = 'Status unavailable'; }
+}
 
 /* ── empty-state helper ─────────────────────────────────── */
 function emptyState(title, desc) {

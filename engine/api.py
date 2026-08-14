@@ -294,6 +294,9 @@ class Api:
     def kernel_disable(self) -> dict:
         return kernel_probe.disable()
 
+    def kernel_enable_test_signing(self) -> dict:
+        return kernel_probe.enable_test_signing()
+
     # ── master real-time protection (with auto re-enable) ──────────
     # When protection is paused "for a while" we stop the shield manager and
     # schedule a Timer to bring it back so the user never has to remember.

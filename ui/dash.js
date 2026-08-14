@@ -75,6 +75,8 @@ async function refreshDash() {
     (e.detail ? '<div class="d">' + esc(e.detail) + '</div>' : '') +
     '</div><div class="when">' + when(e.ts) + '</div></div>').join('')
     : emptyState('No activity yet', 'Actions and detections will appear here.');
+
+  updateFoot();
 }
 
 /* ── start / control scans ──────────────────────────────── */

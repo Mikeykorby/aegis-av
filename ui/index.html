@@ -379,6 +379,11 @@
   }
   #foot .flogo { width: 14px; height: 14px; }
   #foot .fname { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+  #foot .fsub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); }
+  #foot .fspacer { flex: 1; }
+  #foot .fstat { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  #foot .fstat .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  #foot .fstat .dot.bad { background: var(--bad); }
   #errBar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
     background: var(--accent); color: #fff; font-family: 'JetBrains Mono', monospace;
@@ -693,7 +698,7 @@
       <h1>Kernel Companion</h1>
       <div class="sub">A separate driver pushes protection below user mode — pre-execution blocking,
         ransomware IRP interception, and tamper-proof self-defense. Built in the
-        <code>aegis-kernel</code> repo; this toggle discovers whether it can run here and turns it on/off.</div>
+        <code>aegis-kernel</code> repo; this page discovers whether it can run here and turns it on/off.</div>
 
       <div class="kstat" id="kernState">Checking…</div>
 
@@ -707,7 +712,13 @@
 
       <div class="kcompat" id="kernCompat"></div>
 
+      <div style="display:flex; gap:10px; margin:14px 0 10px;">
+        <button class="btn" onclick="kernTestSign()">Enable Test Signing</button>
+        <button class="btn" onclick="loadKernel()">Refresh state</button>
+      </div>
+
       <div class="knote" id="kernNote"></div>
+      <div class="knote mut" id="kernNote2" style="white-space:pre-line"></div>
     </section>
 
     <!-- ─────────── WIFI -->

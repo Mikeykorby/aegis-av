@@ -377,6 +377,31 @@ async function loadKernel() {
   $('#kernNote').textContent = st.detail + (st.issues && st.issues.length
     ? '\n\nTo enable: ' + st.issues.join(' ')
     : '');
+
+  const n2 = $('#kernNote2');
+  if (n2) {
+    n2.textContent = st.driver_present
+      ? 'Driver present: ' + (st.driver_path || '')
+      : 'No driver bundled. This build does not auto-install a kernel driver — '
+        + 'you must build aegis_kernel.sys (in the aegis-kernel repo) and drop it '
+        + 'into the kernel directory, or provide a WHQL-signed driver.';
+  }
+}
+
+async function kernTestSign() {
+  const btn = $('#kernNote');
+  try {
+    const r = await API.kernel_enable_test_signing();
+    if (r.ok) {
+      toast('Test Signing enabled — reboot to apply', r.detail || '', 'ok');
+      $('#kernState').textContent = 'Reboot required';
+    } else {
+      toast('Could not enable Test Signing', r.error || '', 'warn');
+    }
+  } catch (e) {
+    toast('Test Signing action unavailable', 'Run the desktop app as Administrator.', 'warn');
+  }
+  loadKernel();
 }
 
 async function kernToggle() {

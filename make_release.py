@@ -1,8 +1,8 @@
 import sys, subprocess, json, os
 
 REPO = "Mikeykorby/aegis-av"
-TAG = "v2.2.0"
-REL_NAME = "Aegis Security 2.2.0"
+TAG = "v2.2.1"
+REL_NAME = "Aegis Security 2.2.1"
 ASSET = r"C:\Users\ranchel\aegis-av\dist\aegis.exe"
 
 # token from remote URL (never print it)
@@ -18,10 +18,18 @@ hdr = ["-H", "Accept: application/vnd.github+json",
 body = json.dumps({
     "tag_name": TAG,
     "name": REL_NAME,
-    "body": ("Aegis Security 2.1.0 — single-file Windows build.\n\n"
+    "body": ("Aegis Security 2.2.1 — single-file Windows build.\n\n"
              "Portable `aegis.exe`: no installer, no dependencies (uses the system "
              "WebView2 runtime). Real-time shields, premium feature pages, system "
              "tray, and launch-at-startup.\n\n"
+             "Changes in 2.2.1:\n"
+             "- App Updates moved to its own sidebar page (no longer under Settings)\n"
+             "- VPN nav removed (no free VPN bundled)\n"
+             "- Footer is now a live protection/definitions status bar\n"
+             "- Titlebar X minimizes to tray; window controls are real minimize/close\n"
+             "- Honeytrap 'redeploy' actually arms (deploys) canary traps\n"
+             "- Kernel page: added Enable Test Signing + Refresh; honest no-driver note\n"
+             "- Added visible JS error overlay for diagnosis\n\n"
              "Note: this is a user-mode security tool — it detects/quarantines and "
              "monitors; it is not a kernel driver."),
     "draft": False,

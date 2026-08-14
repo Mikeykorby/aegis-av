@@ -195,6 +195,23 @@ def enable() -> dict:
     return {"ok": True, "enabled": True, "loadable": True}
 
 
+def enable_test_signing() -> dict:
+    """Turn on Windows Test Signing so a test-signed .sys can load.
+
+    Requires Administrator and a reboot to take effect. No driver is bundled,
+    so this only removes one of the blockers — the user must still supply a
+    built aegis_kernel.sys (or a WHQL-signed one with Secure Boot on).
+    """
+    if not _is_admin():
+        return {"ok": False, "error": "Run Aegis as Administrator to change boot options."}
+    rc, _, err = _run(["bcdedit.exe", "/set", "testsigning", "on"], timeout=30)
+    if rc != 0:
+        return {"ok": False, "error": (err or "bcdedit failed (%d)" % rc)}
+    return {"ok": True, "reboot_required": True,
+            "detail": "Test Signing enabled. Reboot for it to take effect, then "
+                      "drop a built aegis_kernel.sys into the kernel directory."}
+
+
 def disable() -> dict:
     """Turn the kernel companion OFF (releases any loaded driver/protection)."""
     store.set("kernel.enabled", False)

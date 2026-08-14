@@ -217,18 +217,20 @@ async function runWatchdogScan() {
   }
 }
 
-/* 2 — Ransomware Canary Traps: verify/deploy decoy honeyfiles */
+/* 2 — Ransomware Canary Traps: deploy (arm) + verify decoy honeyfiles */
 async function redeployTraps() {
   try {
+    // Deploy/refresh the honeytrap (plants decoys if missing or tripped).
+    await API.arm_canary_traps();
     const r = await API.verify_canary_traps();
     const armed = r.status === 'ARMED';
     $('#ransomState') && ($('#ransomState').textContent = r.status);
     $('#ransomActive') && ($('#ransomActive').textContent = r.active);
     $('#ransomTripped') && ($('#ransomTripped').textContent = r.tripped);
-    toast(armed ? 'Canary traps verified' : 'Canary traps not armed',
+    toast(armed ? 'Canary traps armed' : 'Canary traps not armed',
       r.active + ' honeyfiles across Documents & Desktop', armed ? 'ok' : 'warn');
   } catch (e) {
-    toast('Canary verification unavailable', 'Open the desktop app to manage traps.', 'warn');
+    toast('Canary deploy unavailable', 'Open the desktop app to manage traps.', 'warn');
   }
 }
 
