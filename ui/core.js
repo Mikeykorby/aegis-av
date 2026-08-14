@@ -255,6 +255,13 @@ window.addEventListener('unhandledrejection', (e) => {
 const THEME_KEY = 'aegis_theme';
 let APPLIED_THEME = 'auto';
 
+/* Titlebar window controls — guarded so an early click before pywebview is
+   ready can't throw (api is null until pywebviewready). */
+function wMin()   { if (window.api) window.api.minimize(); }
+function wMax()   { if (window.api) window.api.toggle_maximize(); }
+function wClose() { if (window.api) window.api.close(); }
+function toggleThemeBtn() { if (window.api) window.api.toggle_theme(); }
+
 function applyTheme(mode) {
   APPLIED_THEME = mode;
   try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}

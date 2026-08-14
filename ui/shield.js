@@ -79,7 +79,8 @@ async function toggleProtection() {
 function refreshRtp() {
   const panel = $('#rtpPanel'), status = $('#rtpStatus');
   if (!panel || !status) return;
-  const pausedUntil = API._pausedUntil || null;
+  // engine stores paused_until in SECONDS; convert to ms for Date.now() compare
+  const pausedUntil = (API._pausedUntil || 0) * 1000;
   const running = API._running;
   const disableBtn = $('#rtpDisable'), mainBtn = $('#rtpMain');
   if (pausedUntil && pausedUntil > Date.now()) {
