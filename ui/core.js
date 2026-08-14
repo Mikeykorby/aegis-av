@@ -253,7 +253,7 @@ window.addEventListener('unhandledrejection', (e) => {
 
 /* ══ Theme persistence (Hy3 system-aware light/dark) ══════ */
 const THEME_KEY = 'aegis_theme';
-APPLIED_THEME = 'auto';
+let APPLIED_THEME = 'auto';
 
 function applyTheme(mode) {
   APPLIED_THEME = mode;
