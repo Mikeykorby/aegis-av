@@ -42,6 +42,8 @@ a = Analysis(
         "webview",
         "webview.util",
         "winreg",
+        "ctypes.winnt",
+        "ctypes.wintypes",
     ],
     hookspath=[],
     hooksconfig={},

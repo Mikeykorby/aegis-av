@@ -241,8 +241,6 @@ def sensitive_data_remove(path: str) -> dict:
 # The process-DACL change is reverted on disable (or when shields turn off) so
 # you can close Aegis normally.
 import ctypes
-import ctypes.winnt as wnt
-from ctypes import wintypes
 
 try:
     import ctypes
