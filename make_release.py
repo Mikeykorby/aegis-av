@@ -1,8 +1,8 @@
 import sys, subprocess, json, os
 
 REPO = "Mikeykorby/aegis-av"
-TAG = "v2.2.1"
-REL_NAME = "Aegis Security 2.2.1"
+TAG = "v2.2.1.5"
+REL_NAME = "Aegis Security 2.2.1.5"
 ASSET = r"C:\Users\ranchel\aegis-av\dist\aegis.exe"
 
 # token from remote URL (never print it)
@@ -18,20 +18,25 @@ hdr = ["-H", "Accept: application/vnd.github+json",
 body = json.dumps({
     "tag_name": TAG,
     "name": REL_NAME,
-    "body": ("Aegis Security 2.2.1 — single-file Windows build.\n\n"
+    "body": ("Aegis Security 2.2.1.5 — single-file Windows build.\n\n"
              "Portable `aegis.exe`: no installer, no dependencies (uses the system "
              "WebView2 runtime). Real-time shields, premium feature pages, system "
              "tray, and launch-at-startup.\n\n"
-             "Changes in 2.2.1:\n"
-             "- App Updates moved to its own sidebar page (no longer under Settings)\n"
+             "Changes in 2.2.1.4:\n"
+             "- Kernel page: honest BCD/test-signing reporting — never claims "
+             "'ready' when Secure Boot blocks Test Signing (firmware policy wall)\n"
+             "- App-wide version alignment: self-version 2.2.1.4 + exe metadata "
+             "2.2.1.4 (was drifted to 2.1.0 / 2.2.0.0)\n"
+             "- App Updates is a dedicated sidebar page (no longer under Settings)\n"
              "- VPN nav removed (no free VPN bundled)\n"
              "- Footer is now a live protection/definitions status bar\n"
-             "- Titlebar X minimizes to tray; window controls are real minimize/close\n"
+             "- Titlebar X minimizes to tray; window controls are real "
+             "minimize/close\n"
              "- Honeytrap 'redeploy' actually arms (deploys) canary traps\n"
-             "- Kernel page: added Enable Test Signing + Refresh; honest no-driver note\n"
              "- Added visible JS error overlay for diagnosis\n\n"
              "Note: this is a user-mode security tool — it detects/quarantines and "
-             "monitors; it is not a kernel driver."),
+             "monitors; the kernel companion requires Secure Boot off or a "
+             "WHQL-signed driver to load."),
     "draft": False,
     "prerelease": False,
 })

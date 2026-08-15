@@ -22,9 +22,9 @@ from . import store
 
 GITHUB_RELEASES = "https://api.github.com/repos/Mikeykorby/aegis-av/releases/latest"
 CREATE_NO_WINDOW = 0x08000000
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AegisSecurity/2.1"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AegisSecurity/2.2.1.5"
 
-_self_version = "2.1.0"
+_self_version = "2.2.1.5"
 
 
 def _run(cmd: str, timeout: int = 120) -> str:

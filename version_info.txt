@@ -4,8 +4,8 @@
 # http://msdn.microsoft.com/en-us/library/ms646997.aspx
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(2, 2, 0, 0),
-        prodvers=(2, 2, 0, 0),
+        filevers=(2, 2, 1, 5),
+        prodvers=(2, 2, 1, 5),
         mask=0x3f,
         flags=0x0,
         OS=0x40004,
@@ -21,12 +21,12 @@ VSVersionInfo(
                     [
                         StringStruct(u'CompanyName', u'Aegis Security'),
                         StringStruct(u'FileDescription', u'Aegis Security — real-time protection'),
-                        StringStruct(u'FileVersion', u'2.2.0.0'),
+                        StringStruct(u'FileVersion', u'2.2.1.5'),
                         StringStruct(u'InternalName', u'Aegis'),
                         StringStruct(u'LegalCopyright', u'Copyright (c) Aegis Security'),
                         StringStruct(u'OriginalFilename', u'aegis.exe'),
                         StringStruct(u'ProductName', u'Aegis Security'),
-                        StringStruct(u'ProductVersion', u'2.2.0.0'),
+                        StringStruct(u'ProductVersion', u'2.2.1.5'),
                     ],
                 )
             ]
