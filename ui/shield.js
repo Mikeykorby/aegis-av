@@ -390,14 +390,13 @@ async function loadKernel() {
 }
 
 async function kernTestSign() {
-  const btn = $('#kernNote');
   try {
-    const r = await API.kernel_enable_test_signing();
-    if (r.ok) {
+    const r = await API.kernel_prepare();
+    if (r && r.ok) {
       toast('Test Signing enabled — reboot to apply', r.detail || '', 'ok');
       $('#kernState').textContent = 'Reboot required';
     } else {
-      toast('Could not enable Test Signing', r.error || '', 'warn');
+      toast('Could not enable Test Signing', (r && r.error) || '', 'warn');
     }
   } catch (e) {
     toast('Test Signing action unavailable', 'Run the desktop app as Administrator.', 'warn');
@@ -407,7 +406,28 @@ async function kernTestSign() {
 
 async function kernToggle() {
   const on = !$('#kernSw').classList.contains('on');
-  const r = on ? await API.kernel_enable() : await API.kernel_disable();
-  if (r && r.warning) { /* surfaced via detail on reload */ }
+  if (on) {
+    let r = await API.kernel_enable();
+    // If the driver is present but not yet loadable (test-signing off /
+    // unsigned), auto-run the BCD + self-sign step so a single reboot
+    // makes it ready.
+    if (await _kernNeedsPrepare(r)) {
+      const prep = await API.kernel_prepare();
+      if (prep && prep.ok) {
+        toast('Kernel driver signed + Test Signing enabled', 'Reboot to load the driver, then re-enable if needed.', 'ok');
+        $('#kernState').textContent = 'Ready after reboot';
+        $('#kernNote').textContent = 'Driver is signed and test-mode is on. Reboot to finish loading.';
+        loadKernel();
+        return;
+      }
+    }
+    if (r && r.warning) toast('Kernel mode', r.warning, 'warn');
+  } else {
+    await API.kernel_disable();
+  }
   loadKernel();
+}
+
+function _kernNeedsPrepare(r) {
+  return r && r.loadable === false && r.warning && /test signing|sign/i.test(r.warning || '');
 }

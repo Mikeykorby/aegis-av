@@ -180,8 +180,104 @@ def status() -> dict:
     return probe
 
 
+def _signtool() -> str | None:
+    """Locate signtool.exe from the Windows SDK / WDK bin trees."""
+    import glob
+    for base in (r"C:\Program Files (x86)\Windows Kits\10\bin",
+                 r"C:\Program Files\Windows Kits\10\bin"):
+        hits = sorted(glob.glob(os.path.join(base, "*", "x64", "signtool.exe")),
+                      reverse=True)
+        if hits:
+            return hits[0]
+    return None
+
+
+def _ensure_test_cert() -> dict:
+    """Create + trust a local test-signing certificate if missing."""
+    ps = r'''
+    $fn = "AegisKernelTest"
+    $existing = @(Get-ChildItem Cert:\LocalMachine\My | Where-Object { $_.FriendlyName -eq $fn })
+    if ($existing.Count -eq 0) {
+        $c = New-SelfSignedCertificate -Type Custom -Subject "CN=Aegis Kernel Test" `
+            -KeyUsage DigitalSignature -FriendlyName $fn `
+            -CertStoreLocation Cert:\LocalMachine\My `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+        $existing = @($c)
+    }
+    $cert = $existing[0]
+    $thumb = $cert.Thumbprint
+    $export = Join-Path $env:TEMP "aegis_test.cer"
+    Export-Certificate -Cert $cert -FilePath $export -Type CERT | Out-Null
+    foreach ($storeName in @("Root","TrustedPublisher")) {
+        $s = New-Object System.Security.Cryptography.X509Certificates.X509Store($storeName,"LocalMachine")
+        $s.Open("ReadWrite")
+        if (-not ($s.Certificates | Where-Object { $_.Thumbprint -eq $thumb })) {
+            $s.Add($cert)
+        }
+        $s.Close()
+    }
+    $thumb
+    '''
+    rc, out, err = _run(["powershell.exe", "-NoProfile", "-Command", ps], timeout=120)
+    if rc != 0:
+        return {"ok": False, "error": (err or out or "cert creation failed (%d)" % rc)}
+    thumb = (out or "").strip().splitlines()[-1].strip()
+    if not thumb:
+        return {"ok": False, "error": "cert creation returned no thumbprint"}
+    return {"ok": True, "thumbprint": thumb}
+
+
+def _self_sign_driver() -> dict:
+    """Test-sign aegis_kernel.sys with the local test cert."""
+    st = _signtool()
+    if not st:
+        return {"ok": False, "error": "signtool.exe not found"}
+    cert = _ensure_test_cert()
+    if not cert.get("ok"):
+        return cert
+    cmd = [st, "sign", "/v", "/n", "Aegis Kernel Test", "/fd", "SHA256",
+           "/tr", "http://timestamp.digicert.com", "/td", "SHA256", DRIVER_PATH]
+    rc, out, err = _run(cmd, timeout=120)
+    if rc != 0:
+        return {"ok": False,
+                "error": (err or out or "sign failed (%d)" % rc)}
+    return {"ok": True, "signed": True}
+
+
+def prepare() -> dict:
+    """Make the machine ready to load the driver: enable Test Signing via
+    bcdedit AND test-sign aegis_kernel.sys with a trusted local cert.
+
+    Requires Administrator. A reboot is required for Test Signing to take
+    effect; after that the driver will load in kernel mode.
+    """
+    if not _is_admin():
+        return {"ok": False, "error": "Run Aegis as Administrator."}
+    if not _driver_present():
+        return {"ok": False,
+                "error": "aegis_kernel.sys not found; build it first."}
+    steps: dict = {}
+    rc, _, err = _run(["bcdedit.exe", "/set", "testsigning", "on"], timeout=30)
+    steps["testsigning_set"] = (rc == 0)
+    if rc != 0:
+        steps["testsigning_error"] = err or ("bcdedit failed (%d)" % rc)
+    sign = _self_sign_driver()
+    steps["signed"] = bool(sign.get("ok"))
+    if not sign.get("ok"):
+        steps["sign_error"] = sign.get("error")
+    ok = bool(steps.get("testsigning_set") and steps.get("signed"))
+    return {"ok": ok, "reboot_required": True, "steps": steps,
+            "detail": ("Test Signing enabled and driver test-signed. "
+                       "Reboot to load the kernel companion.")}
+
+
 def enable() -> dict:
-    """Turn the kernel companion ON. Refuses if the machine can't load it."""
+    """Turn the kernel companion ON.
+
+    If the machine isn't yet able to load the driver (Test Signing off or the
+    .sys unsigned), this automatically runs the bcdedit + self-sign step so a
+    single toggle readies the system. A reboot is then required.
+    """
     probe = compat_probe()
     store.set("kernel.enabled", True)
     if not probe["driver_present"]:
@@ -189,9 +285,18 @@ def enable() -> dict:
                 "warning": "Enabled, but aegis_kernel.sys is missing — "
                            "the kernel path will not engage until it is installed."}
     if not probe["loadable"]:
+        # Not loadable yet — auto-run the bcdedit + self-sign step so a single
+        # toggle readies the machine. The user still has to reboot after.
+        prep = prepare()
+        if prep.get("ok"):
+            return {"ok": True, "enabled": True, "loadable": False,
+                    "reboot_required": True,
+                    "detail": prep.get("detail",
+                                       "Kernel companion readied — reboot to load.")}
         return {"ok": True, "enabled": True, "loadable": False,
-                "warning": "Enabled, but the OS will not load the driver now: "
-                           + "; ".join(probe["issues"])}
+                "warning": "Enabled, but the OS will not load the driver yet: "
+                           + "; ".join(probe["issues"]),
+                "prepare_error": prep.get("error")}
     return {"ok": True, "enabled": True, "loadable": True}
 
 

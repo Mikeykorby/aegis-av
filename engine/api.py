@@ -294,6 +294,9 @@ class Api:
     def kernel_disable(self) -> dict:
         return kernel_probe.disable()
 
+    def kernel_prepare(self) -> dict:
+        return kernel_probe.prepare()
+
     def kernel_enable_test_signing(self) -> dict:
         return kernel_probe.enable_test_signing()
 
