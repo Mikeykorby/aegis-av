@@ -266,17 +266,35 @@ def prepare() -> dict:
     if not sign.get("ok"):
         steps["sign_error"] = sign.get("error")
     ok = bool(steps.get("testsigning_set") and steps.get("signed"))
-    return {"ok": ok, "reboot_required": True, "steps": steps,
-            "detail": ("Test Signing enabled and driver test-signed. "
-                       "Reboot to load the kernel companion.")}
+    if ok:
+        return {"ok": True, "reboot_required": True, "steps": steps,
+                "detail": ("Test Signing enabled and driver test-signed. "
+                           "Reboot to load the kernel companion.")}
+    sb_on = (_secure_boot() == "on")
+    if steps.get("testsigning_error"):
+        if sb_on:
+            reason = ("Secure Boot is ON — the firmware refuses to enable "
+                      "Test Signing, so a self-signed/test-signed .sys cannot "
+                      "load. To use the kernel driver you must either disable "
+                      "Secure Boot in firmware (then re-run) or obtain a "
+                      "WHQL-signed driver (paid Microsoft certification).")
+        else:
+            reason = "Could not enable Test Signing: " + steps["testsigning_error"]
+    elif steps.get("sign_error"):
+        reason = "Driver could not be test-signed: " + steps["sign_error"]
+    else:
+        reason = "Preparation incomplete (unknown cause)."
+    return {"ok": False, "reboot_required": False, "steps": steps,
+            "error": reason, "detail": reason}
 
 
 def enable() -> dict:
     """Turn the kernel companion ON.
 
     If the machine isn't yet able to load the driver (Test Signing off or the
-    .sys unsigned), this automatically runs the bcdedit + self-sign step so a
-    single toggle readies the system. A reboot is then required.
+    .sys unsigned), this attempts the bcdedit + self-sign step and reports the
+    real outcome. It does NOT claim readiness when the OS still refuses to load
+    the driver (e.g. Secure Boot blocking Test Signing).
     """
     probe = compat_probe()
     store.set("kernel.enabled", True)
@@ -285,8 +303,9 @@ def enable() -> dict:
                 "warning": "Enabled, but aegis_kernel.sys is missing — "
                            "the kernel path will not engage until it is installed."}
     if not probe["loadable"]:
-        # Not loadable yet — auto-run the bcdedit + self-sign step so a single
-        # toggle readies the machine. The user still has to reboot after.
+        # Not loadable yet — attempt the bcdedit + self-sign step. If it
+        # succeeds the machine needs a reboot; if the OS refuses (Secure Boot
+        # blocking Test Signing), report the real blocker honestly.
         prep = prepare()
         if prep.get("ok"):
             return {"ok": True, "enabled": True, "loadable": False,
@@ -295,7 +314,7 @@ def enable() -> dict:
                                        "Kernel companion readied — reboot to load.")}
         return {"ok": True, "enabled": True, "loadable": False,
                 "warning": "Enabled, but the OS will not load the driver yet: "
-                           + "; ".join(probe["issues"]),
+                           + (prep.get("error") or "; ".join(probe["issues"])),
                 "prepare_error": prep.get("error")}
     return {"ok": True, "enabled": True, "loadable": True}
 

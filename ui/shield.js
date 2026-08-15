@@ -420,6 +420,10 @@ async function kernToggle() {
         loadKernel();
         return;
       }
+      // prepare() refused (e.g. Secure Boot blocks Test Signing) — surface the
+      // real reason instead of claiming success.
+      toast('Cannot enable kernel driver', (prep && prep.error) || 'See kernel status below.', 'warn');
+      $('#kernNote').textContent = (prep && prep.error) || 'Kernel driver cannot be readied on this machine.';
     }
     if (r && r.warning) toast('Kernel mode', r.warning, 'warn');
   } else {
