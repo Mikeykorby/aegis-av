@@ -105,7 +105,7 @@ async function updateFoot() {
     const prots = s.protections || {};
     const active = Object.values(prots).filter(Boolean).length;
     const total = Object.keys(prots).length || 1;
-    const ok = active === total;
+    const ok = active === total && s.running !== false;
     dot.className = 'dot ' + (ok ? 'ok' : 'bad');
     prot.textContent = active + '/' + total + ' shields';
     defs.textContent = num(s.signatures || 0) + ' defs';

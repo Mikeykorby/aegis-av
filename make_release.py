@@ -1,8 +1,8 @@
 import sys, subprocess, json, os
 
 REPO = "Mikeykorby/aegis-av"
-TAG = "v2.2.1.5"
-REL_NAME = "Aegis Security 2.2.1.5"
+TAG = "v2.2.1.7"
+REL_NAME = "Aegis Security 2.2.1.7"
 ASSET = r"C:\Users\ranchel\aegis-av\dist\aegis.exe"
 
 # token from remote URL (never print it)
@@ -18,22 +18,21 @@ hdr = ["-H", "Accept: application/vnd.github+json",
 body = json.dumps({
     "tag_name": TAG,
     "name": REL_NAME,
-    "body": ("Aegis Security 2.2.1.5 — single-file Windows build.\n\n"
+    "body": ("Aegis Security 2.2.1.6 — single-file Windows build.\n\n"
              "Portable `aegis.exe`: no installer, no dependencies (uses the system "
              "WebView2 runtime). Real-time shields, premium feature pages, system "
              "tray, and launch-at-startup.\n\n"
-             "Changes in 2.2.1.4:\n"
-             "- Kernel page: honest BCD/test-signing reporting — never claims "
-             "'ready' when Secure Boot blocks Test Signing (firmware policy wall)\n"
-             "- App-wide version alignment: self-version 2.2.1.4 + exe metadata "
-             "2.2.1.4 (was drifted to 2.1.0 / 2.2.0.0)\n"
-             "- App Updates is a dedicated sidebar page (no longer under Settings)\n"
-             "- VPN nav removed (no free VPN bundled)\n"
-             "- Footer is now a live protection/definitions status bar\n"
-             "- Titlebar X minimizes to tray; window controls are real "
-             "minimize/close\n"
-             "- Honeytrap 'redeploy' actually arms (deploys) canary traps\n"
-             "- Added visible JS error overlay for diagnosis\n\n"
+             "Changes in 2.2.1.6:\n"
+             "- FIX: footer live status bar no longer stuck on 'Status unavailable' "
+             "— added API.status() so it shows real shield counts + definitions\n"
+             "- Footer now reflects paused protection (shows 'Action needed' when "
+             "real-time monitoring is off, not a false green 'Protected')\n"
+             "- App-wide version alignment: self-version + exe metadata at 2.2.1.6\n"
+             "- Kernel page: honest BCD/test-signing reporting (never claims 'ready' "
+             "under Secure Boot)\n"
+             "- App Updates is a dedicated sidebar page; VPN nav removed\n"
+             "- Titlebar X minimizes to tray; window controls are real minimize/close\n"
+             "- Honeytrap 'redeploy' actually arms (deploys) canary traps\n\n"
              "Note: this is a user-mode security tool — it detects/quarantines and "
              "monitors; the kernel companion requires Secure Boot off or a "
              "WHQL-signed driver to load."),

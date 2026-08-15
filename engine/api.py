@@ -137,6 +137,26 @@ class Api:
             },
         }
 
+    def status(self) -> dict:
+        """Lightweight live state for the footer status bar (API.status()).
+
+        Returns the exact shape ui/core.js#updateFoot() reads:
+          { protections: {file, web, behavior, ransomware}, signatures }
+        """
+        sh = self.shields.status()
+        off = [n for n in ("file", "web", "behavior", "ransomware") if not sh.get(n)]
+        return {
+            "protections": {
+                "file": bool(sh.get("file")),
+                "web": bool(sh.get("web")),
+                "behavior": bool(sh.get("behavior")),
+                "ransomware": bool(sh.get("ransomware")),
+            },
+            "running": bool(sh.get("running")),
+            "signatures": len(self.engine.md5_set) + len(self.engine.sha_set),
+            "shields_off": off,
+        }
+
     # ---------------------------------------------------------------- scans
     def start_scan(self, kind: str, custom_paths: list[str] | None = None) -> dict:
         if self.job and self.job.state in ("running", "enumerating", "paused"):
